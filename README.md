@@ -1,6 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/20a36d8d-228f-410b-a4b8-992b18d334db" alt="" width="450"/>
-  <h1>📦 Fasiclin Estoque</h1>
+  <h1>📦 Fasiclin Compras</h1>
   <p>
     <strong>API RESTful para o sistema de gerenciamento de estoque "Fasiclin", construída com Java e Spring Boot.</strong>
   </p>
@@ -26,7 +25,7 @@
 
 ## 🎯 Sobre o Projeto
 
-A **API Fasiclin Estoque** é o backend de um sistema para controle de inventário. A aplicação permite o gerenciamento completo de produtos, fornecedores, entradas e saídas, fornecendo uma base sólida e escalável para qualquer sistema de frontend (web ou mobile) que precise consumir esses dados.
+A **API Fasiclin Compras** é o backend de um sistema para controle de inventário. A aplicação permite o gerenciamento completo de produtos, fornecedores, entradas e saídas, fornecendo uma base sólida e escalável para qualquer sistema de frontend (web ou mobile) que precise consumir esses dados.
 
 Este projeto acadêmico foi desenvolvido seguindo as melhores práticas de APIs REST, garantindo uma comunicação padronizada, segura e eficiente.
 
