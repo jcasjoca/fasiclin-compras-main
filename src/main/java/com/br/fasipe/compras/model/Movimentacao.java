@@ -19,9 +19,8 @@ public class Movimentacao {
     @Column(name = "IDMOVIMENTACAO")
     private Integer id;
     
-    @ManyToOne
-    @JoinColumn(name = "ID_ESTOQUE", nullable = false)
-    private Estoque estoque;
+    @Column(name = "ID_ESTOQUE", nullable = false)
+    private Integer idEstoque;
     
     @Column(name = "ID_USUARIO", nullable = false)
     private Integer idUsuario;
@@ -33,16 +32,17 @@ public class Movimentacao {
     private Integer idSetorDestino;
     
     @Column(name = "QTDMOVIM", nullable = false)
-    private Integer quantidadeMovimentada;
+    private Integer quantidadeMovimentacao;
     
     @Column(name = "DATAMOVIM", nullable = false)
     private LocalDate dataMovimentacao;
     
-    @Column(name = "TIPOMOVIM", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(name = "TIPOMOVIM", nullable = false)
     private TipoMovimentacao tipoMovimentacao;
     
     public enum TipoMovimentacao {
-        ENTRADA, SAIDA
+        ENTRADA,
+        SAIDA
     }
 }

@@ -5,8 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Entity
 @Table(name = "FORNECEDOR")
 @Data
@@ -30,7 +28,4 @@ public class Fornecedor {
     
     @Column(name = "DECRICAO", length = 250)
     private String descricao;
-    
-    @OneToMany(mappedBy = "fornecedor")
-    private List<FornecedorProduto> produtos;
 }

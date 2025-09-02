@@ -6,22 +6,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "FORNECPROD")
+@Table(name = "UNIMEDIDA")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class FornecedorProduto {
+public class Unimedida {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "IDFORNECPROD")
+    @Column(name = "IDUNMEDI")
     private Integer id;
     
-    @ManyToOne
-    @JoinColumn(name = "ID_FORNECEDOR", nullable = false)
-    private Fornecedor fornecedor;
+    @Column(name = "DESCRICAO", length = 50, nullable = false)
+    private String descricao;
     
-    @ManyToOne
-    @JoinColumn(name = "ID_PRODUTO", nullable = false)
-    private Produto produto;
+    @Column(name = "UNIABREV", length = 3, nullable = false, unique = true)
+    private String unidadeAbreviacao;
 }

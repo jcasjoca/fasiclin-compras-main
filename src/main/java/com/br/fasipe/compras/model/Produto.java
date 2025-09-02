@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @Entity
 @Table(name = "PRODUTO")
@@ -20,19 +19,18 @@ public class Produto {
     @Column(name = "IDPRODUTO")
     private Integer id;
     
-    @Column(name = "NOME", nullable = false, length = 50)
+    @Column(name = "NOME", length = 50, nullable = false)
     private String nome;
     
-    @Column(name = "DESCRICAO", nullable = false, length = 250)
+    @Column(name = "DESCRICAO", length = 250, nullable = false)
     private String descricao;
     
-    @ManyToOne
-    @JoinColumn(name = "ID_ALMOX")
-    private Almoxarifado almoxarifado;
+    @Column(name = "ID_ALMOX")
+    private Integer idAlmoxarifado;
     
     @ManyToOne
     @JoinColumn(name = "ID_UNMEDI", nullable = false)
-    private UnidadeMedida unidadeMedida;
+    private Unimedida unidadeMedida;
     
     @Column(name = "CODBARRAS", length = 250)
     private String codigoBarras;
@@ -48,13 +46,4 @@ public class Produto {
     
     @Column(name = "PNTPEDIDO", nullable = false)
     private Integer pontoPedido;
-    
-    @OneToMany(mappedBy = "produto")
-    private List<FornecedorProduto> fornecedores;
-    
-    @OneToMany(mappedBy = "produto")
-    private List<Estoque> estoques;
-    
-    @OneToMany(mappedBy = "produto")
-    private List<ItemOrdemCompra> itensOrdemCompra;
 }

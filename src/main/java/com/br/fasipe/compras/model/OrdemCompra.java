@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 @Entity
 @Table(name = "ORDEMCOMPRA")
@@ -21,8 +20,8 @@ public class OrdemCompra {
     @Column(name = "IDORDCOMP")
     private Integer id;
     
-    @Column(name = "STATUSORD", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(name = "STATUSORD", nullable = false)
     private StatusOrdemCompra status;
     
     @Column(name = "VALOR", nullable = false, precision = 10, scale = 2)
@@ -37,13 +36,9 @@ public class OrdemCompra {
     @Column(name = "DATAENTRE", nullable = false)
     private LocalDate dataEntrega;
     
-    @OneToMany(mappedBy = "ordemCompra", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ItemOrdemCompra> itens;
-    
-    @OneToMany(mappedBy = "ordemCompra", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Lote> lotes;
-    
     public enum StatusOrdemCompra {
-        PEND, ANDA, CONC
+        PEND, // Pendente
+        ANDA, // Andamento
+        CONC  // Concluída
     }
 }
