@@ -29,7 +29,7 @@ public class Produto {
     private Integer idAlmoxarifado;
     
     @ManyToOne
-    @JoinColumn(name = "ID_UNMEDI", nullable = false)
+    @JoinColumn(name = "ID_UNMEDI", referencedColumnName = "IDUNMEDI", nullable = false)
     private Unimedida unidadeMedida;
     
     @Column(name = "CODBARRAS", length = 250)
