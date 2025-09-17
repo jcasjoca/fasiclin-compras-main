@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Aprovação de Orçamentos - FasiComércio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #335e9e 0%, #4a7bc8 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background-color: #FFFFFF;
+            color: #335e9e;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #335e9e;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            font-weight: 400;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            color: #FFFFFF;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .error {
+            background-color: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+
+        .success {
+            background-color: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+
+        .produto-group {
+            background-color: #FFFFFF;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .produto-header {
+            background-color: #335e9e;
+            color: white;
+            padding: 20px;
+            font-weight: 700;
+            font-size: 1.2em;
+        }
+
+        .produto-info {
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #d9d9d9;
+            font-weight: 400;
+        }
+
+        .cotacoes-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cotacoes-table th,
+        .cotacoes-table td {
+            padding: 15px 12px;
+            text-align: left;
+            border-bottom: 1px solid #d9d9d9;
+            font-weight: 400;
+        }
+
+        .cotacoes-table th {
+            background-color: #335e9e;
+            color: white;
+            font-weight: 700;
+        }
+
+        .cotacoes-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .cotacoes-table tr.selected {
+            background-color: #e3f2fd;
+            border-left: 4px solid #335e9e;
+        }
+
+        .radio-column {
+            width: 60px;
+            text-align: center;
+        }
+
+        .radio-column input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #335e9e;
+        }
+
+        .currency {
+            text-align: right;
+            font-weight: 700;
+            color: #27ae60;
+        }
+
+        .date-column {
+            white-space: nowrap;
+        }
+
+        .actions {
+            background-color: #FFFFFF;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .btn-primary {
+            background-color: #335e9e;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #2d5085;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(51, 94, 158, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background-color: #d9d9d9;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #FFFFFF;
+            font-size: 1.2em;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background-color: #FFFFFF;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #335e9e;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 8px;
+            font-weight: 400;
+        }
+
+        .sidebar-menu {
+            background-color: #FFFFFF;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .menu-item {
+            display: block;
+            padding: 15px 20px;
+            margin: 5px 0;
+            color: #335e9e;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 400;
+        }
+
+        .menu-item:hover {
+            background-color: #335e9e;
+            color: white;
+        }
+
+        .menu-item.active {
+            background-color: #335e9e;
+            color: white;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Menu lateral inspirado no FasiComércio -->
+        <div class="sidebar-menu">
+            <a href="#" class="menu-item">Início</a>
+            <a href="#" class="menu-item">Produtos</a>
+            <a href="#" class="menu-item active">Compras</a>
+            <a href="consulta.html" class="menu-item">Consultas</a>
+            <a href="#" class="menu-item">Configurações</a>
+        </div>
+
+        <div class="header">
+            <h1>📋 Painel de Aprovação</h1>
+            <p>Selecione os melhores orçamentos para cada produto</p>
+        </div>
+
+    <div id="loadingDiv" class="loading">
+        Carregando orçamentos pendentes...
+    </div>
+
+    <div id="errorDiv" class="error" style="display: none;"></div>
+    <div id="successDiv" class="success" style="display: none;"></div>
+
+    <div id="statsDiv" class="stats" style="display: none;">
+        <div class="stat-item">
+            <div id="statProdutos" class="stat-number">0</div>
+            <div class="stat-label">Produtos</div>
+        </div>
+        <div class="stat-item">
+            <div id="statCotacoes" class="stat-number">0</div>
+            <div class="stat-label">Cotações</div>
+        </div>
+        <div class="stat-item">
+            <div id="statSelecionados" class="stat-number">0</div>
+            <div class="stat-label">Selecionados</div>
+        </div>
+    </div>
+
+    <div id="orcamentosContainer"></div>
+
+        <div id="actionsDiv" class="actions" style="display: none;">
+            <button id="gerarOcBtn" class="btn-primary" disabled>
+                Gerar Ordens de Compra
+            </button>
+            <p style="margin-top: 15px; color: #666; font-weight: 400;">
+                Selecione pelo menos um orçamento para cada produto antes de gerar as ordens de compra.
+            </p>
+        </div>
+    </div>
+
+    <script src="aprovacao.js"></script>
+</body>
+</html>

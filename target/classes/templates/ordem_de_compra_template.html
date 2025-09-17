@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 12px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .info-box {
+            width: 48%;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+        
+        .info-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        
+        .info-item {
+            margin-bottom: 5px;
+        }
+        
+        .label {
+            font-weight: bold;
+        }
+        
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        .products-table th,
+        .products-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .products-table th {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .products-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .currency {
+            text-align: right;
+        }
+        
+        .total-section {
+            text-align: right;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .total-amount {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        
+        .signature-box {
+            width: 45%;
+            text-align: center;
+            border-top: 1px solid #333;
+            padding-top: 5px;
+        }
+        
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">ORDEM DE COMPRA</div>
+        <div th:text="'Data de Geração: ' + ${dataGeracao}"></div>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-box">
+            <div class="info-title">DADOS DO FORNECEDOR</div>
+            <div class="info-item">
+                <span class="label">Nome:</span> 
+                <span th:text="${fornecedor.descricao}"></span>
+            </div>
+            <div class="info-item">
+                <span class="label">Representante:</span> 
+                <span th:text="${fornecedor.representante}"></span>
+            </div>
+            <div class="info-item">
+                <span class="label">Contato:</span> 
+                <span th:text="${fornecedor.contatoRepresentante}"></span>
+            </div>
+            <div class="info-item">
+                <span class="label">ID Fornecedor:</span> 
+                <span th:text="${fornecedor.id}"></span>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <div class="info-title">INFORMAÇÕES DA ORDEM</div>
+            <div class="info-item">
+                <span class="label">Data de Entrega:</span> 
+                <span th:text="${dataEntrega}"></span>
+            </div>
+            <div class="info-item">
+                <span class="label">Condições de Pagamento:</span> 
+                <span th:text="${condicoesPagamento}"></span>
+            </div>
+            <div class="info-item">
+                <span class="label">Garantia:</span> 
+                <span th:text="${garantia}"></span>
+            </div>
+        </div>
+    </div>
+    
+    <table class="products-table">
+        <thead>
+            <tr>
+                <th>Produto</th>
+                <th>Descrição</th>
+                <th>Unidade</th>
+                <th>Quantidade</th>
+                <th>Preço Unitário</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="orcamento : ${orcamentos}">
+                <td th:text="${orcamento.produto.nome}"></td>
+                <td th:text="${orcamento.produto.descricao}"></td>
+                <td th:text="${orcamento.unidadeMedida.unidadeAbreviacao}"></td>
+                <td th:text="${orcamento.quantidade}"></td>
+                <td class="currency" th:text="'R$ ' + ${#numbers.formatDecimal(orcamento.precoCompra, 1, 2)}"></td>
+                <td class="currency" th:text="'R$ ' + ${#numbers.formatDecimal(orcamento.precoCompra * orcamento.quantidade, 1, 2)}"></td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="total-section">
+        <div>
+            <span class="label">Quantidade Total de Itens:</span>
+            <span th:text="${quantidadeTotal}"></span>
+        </div>
+        <div class="total-amount">
+            <span class="label">VALOR TOTAL:</span>
+            <span th:text="'R$ ' + ${#numbers.formatDecimal(valorTotal, 1, 2)}"></span>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <div>
+            <span class="label">Aprovado por:</span>
+            <span th:text="${nomeUsuarioAprovador}"></span>
+        </div>
+        <div>
+            <span class="label">Data de Aprovação:</span>
+            <span th:text="${dataGeracao}"></span>
+        </div>
+        
+        <div class="signature-section">
+            <div class="signature-box">
+                Assinatura do Responsável
+            </div>
+            <div class="signature-box">
+                Carimbo da Empresa
+            </div>
+        </div>
+    </div>
+</body>
+</html>

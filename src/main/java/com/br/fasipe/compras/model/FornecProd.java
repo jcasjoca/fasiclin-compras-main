@@ -3,52 +3,42 @@ package com.br.fasipe.compras.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "fornecprod")
+@Table(name = "FORNECPROD")
 public class FornecProd {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer codfornecprod;
+    @Column(name = "IDFORNECPROD")
+    private Integer id;
     
-    @Column(name = "codfornecedor")
-    private Integer codFornecedor;
+    @Column(name = "ID_FORNECEDOR")
+    private Integer idFornecedor;
     
-    @Column(name = "codproduto")
-    private Integer codProduto;
-    
-    @Column(name = "valorunid")
-    private Double valorUnid;
+    @Column(name = "ID_PRODUTO")
+    private Integer idProduto;
     
     // Getters and Setters
-    public Integer getCodfornecprod() {
-        return codfornecprod;
+    public Integer getId() {
+        return id;
     }
     
-    public void setCodfornecprod(Integer codfornecprod) {
-        this.codfornecprod = codfornecprod;
+    public void setId(Integer id) {
+        this.id = id;
     }
     
-    public Integer getCodFornecedor() {
-        return codFornecedor;
+    public Integer getIdFornecedor() {
+        return idFornecedor;
     }
     
-    public void setCodFornecedor(Integer codFornecedor) {
-        this.codFornecedor = codFornecedor;
+    public void setIdFornecedor(Integer idFornecedor) {
+        this.idFornecedor = idFornecedor;
     }
     
-    public Integer getCodProduto() {
-        return codProduto;
+    public Integer getIdProduto() {
+        return idProduto;
     }
     
-    public void setCodProduto(Integer codProduto) {
-        this.codProduto = codProduto;
-    }
-    
-    public Double getValorUnid() {
-        return valorUnid;
-    }
-    
-    public void setValorUnid(Double valorUnid) {
-        this.valorUnid = valorUnid;
+    public void setIdProduto(Integer idProduto) {
+        this.idProduto = idProduto;
     }
 }
