@@ -1,0 +1,410 @@
+/* Aprovação de Orçamentos - FasiComércio */
+/* Fontes */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+/* Reset e configurações gerais */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: #FFFFFF;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cabeçalho com logo */
+.header-top {
+    background-color: #335e9e;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+}
+
+.header-logo h1 {
+    font-size: 2rem;
+    font-weight: 300;
+    color: white;
+    margin: 0;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.header-logo span {
+    color: #64b5f6;
+    font-weight: 400;
+}
+
+.user-menu-container {
+    position: relative;
+}
+
+.user-menu {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    transition: background-color 0.3s ease;
+}
+
+.user-menu:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: white;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 150px;
+    z-index: 1000;
+    display: none;
+    margin-top: 5px;
+}
+
+.user-dropdown.show {
+    display: block;
+}
+
+.dropdown-item {
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    color: #333;
+    transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #f5f5f5;
+}
+
+.logout-btn {
+    color: #d32f2f;
+    border-top: 1px solid #d9d9d9;
+}
+
+.logout-btn:hover {
+    background-color: #ffebee;
+}
+
+/* Layout principal */
+.main-layout {
+    display: flex;
+    flex: 1;
+    min-height: calc(100vh - 70px);
+}
+
+/* Menu lateral */
+.sidebar {
+    width: 250px;
+    background-color: #d9d9d9;
+    padding: 0;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 20px 0;
+}
+
+.menu-item {
+    display: block;
+    padding: 15px 25px;
+    color: #335e9e;
+    text-decoration: none;
+    font-weight: 400;
+    font-size: 1em;
+    border-bottom: 1px solid rgba(51, 94, 158, 0.1);
+    transition: all 0.3s ease;
+}
+
+.menu-item:hover {
+    background-color: rgba(51, 94, 158, 0.1);
+}
+
+.menu-item.active {
+    background-color: #335e9e;
+    color: #d9d9d9;
+    font-weight: 700;
+}
+
+/* Área de conteúdo */
+.content-area {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+.page-header {
+    background-color: #FFFFFF;
+    color: #335e9e;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.page-header h1 {
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #335e9e;
+    margin-bottom: 10px;
+}
+
+.page-header p {
+    font-weight: 400;
+    color: #666;
+    font-size: 1.1em;
+}
+
+/* Mensagens */
+.loading {
+    text-align: center;
+    padding: 50px;
+    font-size: 1.2em;
+    color: #666;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.error {
+    background-color: #e74c3c;
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 400;
+}
+
+.success {
+    background-color: #27ae60;
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 400;
+}
+
+/* Estatísticas */
+.stats {
+    display: flex;
+    justify-content: space-around;
+    background-color: #FFFFFF;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #335e9e;
+}
+
+.stat-label {
+    color: #666;
+    margin-top: 8px;
+    font-weight: 400;
+}
+
+/* Grupos de produtos */
+.produto-group {
+    background-color: #FFFFFF;
+    margin-bottom: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.produto-header {
+    background-color: #335e9e;
+    color: white;
+    padding: 20px;
+    font-weight: 700;
+    font-size: 1.2em;
+}
+
+.produto-info {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #d9d9d9;
+    font-weight: 400;
+}
+
+/* Tabelas */
+.cotacoes-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.cotacoes-table th,
+.cotacoes-table td {
+    padding: 15px 12px;
+    text-align: left;
+    border-bottom: 1px solid #d9d9d9;
+    font-weight: 400;
+}
+
+.cotacoes-table th {
+    background-color: #335e9e;
+    color: white;
+    font-weight: 700;
+}
+
+.cotacoes-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.cotacoes-table tr.selected {
+    background-color: #e3f2fd;
+    border-left: 4px solid #335e9e;
+}
+
+.radio-column {
+    width: 60px;
+    text-align: center;
+}
+
+.radio-column input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #335e9e;
+}
+
+.currency {
+    text-align: right;
+    font-weight: 700;
+    color: #27ae60;
+}
+
+.date-column {
+    white-space: nowrap;
+}
+
+/* Ações */
+.actions {
+    background-color: #FFFFFF;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    margin-top: 30px;
+}
+
+.btn-primary {
+    background-color: #335e9e;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    font-size: 1.1em;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: #2d5085;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(51, 94, 158, 0.3);
+}
+
+.btn-primary:disabled {
+    background-color: #d9d9d9;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.no-data {
+    text-align: center;
+    padding: 50px;
+    color: #666;
+    font-size: 1.2em;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .main-layout {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+    }
+    
+    .sidebar-menu {
+        display: flex;
+        overflow-x: auto;
+        padding: 10px;
+    }
+    
+    .menu-item {
+        white-space: nowrap;
+        min-width: 120px;
+        text-align: center;
+        border-bottom: none;
+        border-right: 1px solid rgba(51, 94, 158, 0.1);
+    }
+    
+    .content-area {
+        padding: 15px;
+    }
+    
+    .page-header h1 {
+        font-size: 2em;
+    }
+    
+    .stats {
+        flex-direction: column;
+        gap: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-top {
+        padding: 10px 15px;
+    }
+    
+    .header-logo {
+        height: 30px;
+    }
+    
+    .page-header {
+        padding: 20px 15px;
+    }
+}

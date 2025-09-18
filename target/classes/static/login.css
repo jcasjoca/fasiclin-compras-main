@@ -1,0 +1,283 @@
+/* Login FasiComércio - Design da Imagem */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #2948b1 0%, #335e9e 50%, #1a365d 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Padrão de ondas animado no background */
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 800'%3E%3Cpath d='M1600 800V400c-100 0-200-50-300-100S900 200 800 200s-200 50-300 100-200 100-300 100S0 350 0 400v400z' fill='%23ffffff' opacity='0.03'/%3E%3C/svg%3E") repeat-x;
+    background-size: 1600px 800px;
+    animation: waveMove 20s ease-in-out infinite;
+}
+
+body::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+    animation: pulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes waveMove {
+    0%, 100% { transform: translateX(0) translateY(0); }
+    50% { transform: translateX(-50px) translateY(-20px); }
+}
+
+@keyframes pulse {
+    0% { opacity: 0.3; }
+    100% { opacity: 0.7; }
+}
+
+/* Botão Sair */
+.sair-btn {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    z-index: 10;
+}
+
+.sair-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Container principal */
+.login-container {
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 480px;
+    padding: 0 20px;
+}
+
+/* Logo FasiComércio */
+.logo {
+    margin-bottom: 60px;
+    text-align: center;
+}
+
+.logo h1 {
+    font-size: 3.2rem;
+    font-weight: 300;
+    color: white;
+    letter-spacing: -1px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.logo span {
+    color: #64b5f6;
+    font-weight: 400;
+}
+
+/* Card de Login */
+.login-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    width: 100%;
+    max-width: 420px;
+    backdrop-filter: blur(20px);
+}
+
+/* Header do card */
+.login-header {
+    background: #335e9e;
+    color: white;
+    text-align: center;
+    padding: 25px 30px;
+}
+
+.login-header h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+/* Formulário */
+.login-form {
+    padding: 40px 30px 30px;
+}
+
+/* Grupo de input */
+.input-group {
+    margin-bottom: 25px;
+}
+
+.input-container {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: #335e9e;
+    z-index: 2;
+}
+
+.form-input {
+    width: 100%;
+    padding: 18px 20px 18px 55px;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    color: #2d3748;
+    background: #f8fafc;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.form-input:focus {
+    border-color: #335e9e;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(51, 94, 158, 0.1);
+}
+
+.form-input::placeholder {
+    color: #a0aec0;
+    font-weight: 400;
+}
+
+/* Botão de Login */
+.login-btn {
+    width: 100%;
+    background: #335e9e;
+    color: white;
+    border: none;
+    padding: 20px;
+    border-radius: 12px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+    letter-spacing: 0.5px;
+}
+
+.login-btn:hover:not(:disabled) {
+    background: #2d5085;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(51, 94, 158, 0.4);
+}
+
+.login-btn:disabled {
+    background: #cbd5e0;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Mensagens de erro e sucesso */
+.error-message, .success-message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    display: none;
+}
+
+.error-message {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+.success-message {
+    background: #c6f6d5;
+    color: #2f855a;
+    border: 1px solid #9ae6b4;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .logo h1 {
+        font-size: 2.5rem;
+    }
+    
+    .login-container {
+        padding: 0 15px;
+    }
+    
+    .login-form {
+        padding: 30px 25px 25px;
+    }
+    
+    .sair-btn {
+        top: 20px;
+        left: 20px;
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .logo {
+        margin-bottom: 40px;
+    }
+    
+    .logo h1 {
+        font-size: 2.2rem;
+    }
+    
+    .login-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    .form-input {
+        padding: 16px 18px 16px 50px;
+        font-size: 15px;
+    }
+    
+    .login-btn {
+        padding: 18px;
+        font-size: 15px;
+    }
+}

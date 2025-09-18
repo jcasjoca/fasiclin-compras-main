@@ -17,6 +17,7 @@ const exportExcelBtn = document.getElementById('exportExcelBtn');
 
 // Campos de filtro
 const filtros = {
+    idPedido: document.getElementById('idPedido'),
     dataInicio: document.getElementById('dataInicio'),
     dataFim: document.getElementById('dataFim'),
     fornecedor: document.getElementById('fornecedor'),
@@ -29,9 +30,33 @@ const filtros = {
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     configurarEventListeners();
-    definirDatasPadrao();
-    consultarOrdens();
+    configurarMenuUsuario();
+    // Removido: definirDatasPadrao() - não carregar automaticamente
+    // Removido: consultarOrdens() - usuário deve consultar manualmente
 });
+
+function configurarMenuUsuario() {
+    // Configurar dropdown do menu do usuário
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const userDropdown = document.getElementById('userDropdown');
+    
+    if (userMenuBtn && userDropdown) {
+        userMenuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            userDropdown.classList.toggle('show');
+        });
+        
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', function() {
+            userDropdown.classList.remove('show');
+        });
+        
+        // Impedir que o dropdown feche ao clicar nele
+        userDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+}
 
 function configurarEventListeners() {
     consultarBtn.addEventListener('click', consultarOrdens);
@@ -39,20 +64,28 @@ function configurarEventListeners() {
     
     // Consulta automática ao pressionar Enter nos campos
     Object.values(filtros).forEach(campo => {
-        campo.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                consultarOrdens();
-            }
-        });
+        if (campo) { // Verificar se o elemento existe
+            campo.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    consultarOrdens();
+                }
+            });
+        }
     });
 
     // Validação de datas
-    filtros.dataInicio.addEventListener('change', validarDatas);
-    filtros.dataFim.addEventListener('change', validarDatas);
+    if (filtros.dataInicio) filtros.dataInicio.addEventListener('change', validarDatas);
+    if (filtros.dataFim) filtros.dataFim.addEventListener('change', validarDatas);
     
     // Validação de valores
-    filtros.valorMinimo.addEventListener('change', validarValores);
-    filtros.valorMaximo.addEventListener('change', validarValores);
+    if (filtros.valorMinimo) filtros.valorMinimo.addEventListener('change', validarValores);
+    if (filtros.valorMaximo) filtros.valorMaximo.addEventListener('change', validarValores);
+    
+    // Validação de ID do pedido
+    if (filtros.idPedido) {
+        filtros.idPedido.addEventListener('input', validarIdPedido);
+        filtros.idPedido.addEventListener('change', validarIdPedido);
+    }
 
     // Export handlers
     exportPdfBtn.addEventListener('click', () => exportarDados('pdf'));
@@ -84,8 +117,8 @@ function validarDatas() {
         filtros.dataFim.style.borderColor = '#e74c3c';
         return false;
     } else {
-        filtros.dataInicio.style.borderColor = '#ddd';
-        filtros.dataFim.style.borderColor = '#ddd';
+        filtros.dataInicio.style.borderColor = '#d9d9d9';
+        filtros.dataFim.style.borderColor = '#d9d9d9';
         hideError();
         return true;
     }
@@ -104,11 +137,49 @@ function validarValores() {
         filtros.valorMaximo.style.borderColor = '#e74c3c';
         return false;
     } else {
-        filtros.valorMinimo.style.borderColor = '#ddd';
-        filtros.valorMaximo.style.borderColor = '#ddd';
+        filtros.valorMinimo.style.borderColor = '#d9d9d9';
+        filtros.valorMaximo.style.borderColor = '#d9d9d9';
         hideError();
         return true;
     }
+}
+
+/**
+ * Valida o ID do pedido
+ */
+function validarIdPedido() {
+    const idPedido = filtros.idPedido.value;
+    
+    if (idPedido && idPedido.trim() !== '') {
+        const id = parseInt(idPedido.trim());
+        if (isNaN(id) || id <= 0) {
+            showError('O ID do pedido deve ser um número positivo válido.');
+            filtros.idPedido.style.borderColor = '#e74c3c';
+            return false;
+        }
+    }
+    
+    filtros.idPedido.style.borderColor = '#d9d9d9';
+    hideError();
+    return true;
+}
+
+/**
+ * Valida todos os filtros antes da consulta
+ */
+function validarTodosFiltros() {
+    let valido = true;
+    
+    // Validar datas
+    if (!validarDatas()) valido = false;
+    
+    // Validar valores
+    if (!validarValores()) valido = false;
+    
+    // Validar ID do pedido
+    if (!validarIdPedido()) valido = false;
+    
+    return valido;
 }
 
 /**
@@ -118,7 +189,7 @@ async function consultarOrdens() {
     if (loading) return;
 
     // Validações
-    if (!validarDatas() || !validarValores()) {
+    if (!validarTodosFiltros()) {
         return;
     }
 
@@ -134,8 +205,33 @@ async function consultarOrdens() {
         const params = new URLSearchParams();
         
         Object.entries(filtros).forEach(([key, elemento]) => {
-            if (elemento.value && elemento.value.trim() !== '') {
-                params.append(key, elemento.value.trim());
+            if (elemento && elemento.value && elemento.value.trim() !== '') {
+                let valor = elemento.value.trim();
+                
+                // Validação específica para cada tipo de filtro
+                if (key === 'idPedido') {
+                    const id = parseInt(valor);
+                    if (!isNaN(id) && id > 0) {
+                        params.append('id', id.toString());
+                    }
+                } else if (key === 'fornecedor') {
+                    // Apenas adicionar se não estiver vazio
+                    if (valor.length >= 2) { // Mínimo 2 caracteres para evitar muitos resultados
+                        params.append(key, valor);
+                    }
+                } else if (key === 'produto') {
+                    // Apenas adicionar se não estiver vazio
+                    if (valor.length >= 2) { // Mínimo 2 caracteres para evitar muitos resultados
+                        params.append(key, valor);
+                    }
+                } else if (key === 'valorMinimo' || key === 'valorMaximo') {
+                    const valorNum = parseFloat(valor);
+                    if (!isNaN(valorNum) && valorNum >= 0) {
+                        params.append(key, valorNum.toString());
+                    }
+                } else {
+                    params.append(key, valor);
+                }
             }
         });
 
@@ -150,6 +246,11 @@ async function consultarOrdens() {
         });
 
         if (!response.ok) {
+            if (response.status === 404) {
+                showError('Nenhuma ordem de compra foi encontrada com os critérios informados.');
+                mostrarSemResultados();
+                return;
+            }
             throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
         }
 
@@ -159,18 +260,90 @@ async function consultarOrdens() {
             throw new Error('Formato de resposta inválido');
         }
 
-        ordensCarregadas = ordens;
-        exibirResultados(ordens);
+        // Filtrar resultados no frontend para garantir consistência
+        const ordensFiltradas = filtrarResultadosLocalmente(ordens);
+        
+        ordensCarregadas = ordensFiltradas;
+        exibirResultados(ordensFiltradas);
 
     } catch (error) {
         console.error('Erro ao consultar ordens:', error);
-        showError('Erro ao consultar ordens de compra: ' + error.message);
+        mostrarSemResultados();
     } finally {
         loading = false;
         consultarBtn.disabled = false;
         consultarBtn.textContent = '🔍 Consultar';
         mostrarLoading(false);
     }
+}
+
+/**
+ * Filtra os resultados localmente para garantir consistência
+ */
+function filtrarResultadosLocalmente(ordens) {
+    return ordens.filter(ordem => {
+        // Filtro por ID
+        if (filtros.idPedido.value && filtros.idPedido.value.trim() !== '') {
+            const idBuscado = parseInt(filtros.idPedido.value.trim());
+            if (ordem.id !== idBuscado) return false;
+        }
+        
+        // Filtro por fornecedor (busca parcial, case-insensitive)
+        if (filtros.fornecedor.value && filtros.fornecedor.value.trim() !== '') {
+            const fornecedorBuscado = filtros.fornecedor.value.trim().toLowerCase();
+            const nomeFantasia = (ordem.fornecedor.nomeFantasia || '').toLowerCase();
+            const razaoSocial = (ordem.fornecedor.razaoSocial || '').toLowerCase();
+            if (!nomeFantasia.includes(fornecedorBuscado) && !razaoSocial.includes(fornecedorBuscado)) {
+                return false;
+            }
+        }
+        
+        // Filtro por produto (busca parcial, case-insensitive)
+        if (filtros.produto.value && filtros.produto.value.trim() !== '') {
+            const produtoBuscado = filtros.produto.value.trim().toLowerCase();
+            const nomeProduto = (ordem.produto.nome || '').toLowerCase();
+            const descricaoProduto = (ordem.produto.descricao || '').toLowerCase();
+            if (!nomeProduto.includes(produtoBuscado) && !descricaoProduto.includes(produtoBuscado)) {
+                return false;
+            }
+        }
+        
+        // Filtro por data
+        if (filtros.dataInicio.value) {
+            const dataInicio = new Date(filtros.dataInicio.value);
+            const dataOrdem = new Date(ordem.dataCotacao);
+            if (dataOrdem < dataInicio) return false;
+        }
+        
+        if (filtros.dataFim.value) {
+            const dataFim = new Date(filtros.dataFim.value);
+            const dataOrdem = new Date(ordem.dataCotacao);
+            if (dataOrdem > dataFim) return false;
+        }
+        
+        // Filtro por status
+        if (filtros.status.value && filtros.status.value !== '') {
+            if (ordem.status !== filtros.status.value) return false;
+        }
+        
+        // Filtro por valor mínimo
+        if (filtros.valorMinimo.value && filtros.valorMinimo.value.trim() !== '') {
+            const valorMinimo = parseFloat(filtros.valorMinimo.value);
+            if (!isNaN(valorMinimo) && parseFloat(ordem.valorTotal) < valorMinimo) {
+                return false;
+            }
+        }
+        
+        // Filtro por valor máximo
+        if (filtros.valorMaximo.value && filtros.valorMaximo.value.trim() !== '') {
+            const valorMaximo = parseFloat(filtros.valorMaximo.value);
+            if (!isNaN(valorMaximo) && parseFloat(ordem.valorTotal) > valorMaximo) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
 }
 
 /**
@@ -230,11 +403,12 @@ function exibirResultados(ordens) {
  */
 function limparFiltros() {
     Object.values(filtros).forEach(campo => {
-        campo.value = '';
-        campo.style.borderColor = '#ddd';
+        if (campo) {
+            campo.value = '';
+            campo.style.borderColor = '#d9d9d9';
+        }
     });
     
-    definirDatasPadrao();
     hideError();
     hideResults();
     habilitarExportacao(false);
@@ -456,4 +630,18 @@ function traduzirStatus(status) {
         'REJEITADO': 'Rejeitado'
     };
     return traducoes[status] || status;
+}
+
+/**
+ * Função de logout
+ */
+function logout() {
+    if (confirm('Deseja realmente sair do sistema?')) {
+        // Limpar qualquer dado de sessão local
+        sessionStorage.clear();
+        localStorage.clear();
+        
+        // Redirecionar para a página de login
+        window.location.href = 'login.html';
+    }
 }

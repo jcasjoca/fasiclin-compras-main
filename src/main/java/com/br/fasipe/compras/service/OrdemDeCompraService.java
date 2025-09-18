@@ -79,10 +79,26 @@ public class OrdemDeCompraService {
     }
     
     public List<OrcamentoDTO> consultarOrdensDeCompra(LocalDate dataInicial, LocalDate dataFinal, 
-                                                     Integer fornecedorId, Integer produtoId) {
+                                                     Integer fornecedorId, Integer produtoId, Long idOrcamento) {
         List<Orcamento> orcamentos;
         
-        if (fornecedorId != null && produtoId != null) {
+        // Se foi especificado um ID específico, buscar apenas por ele
+        if (idOrcamento != null) {
+            Optional<Orcamento> orcamentoOpt = orcamentoRepository.findById(idOrcamento);
+            if (orcamentoOpt.isPresent() && "aprovado".equals(orcamentoOpt.get().getStatus())) {
+                Orcamento orcamento = orcamentoOpt.get();
+                // Verificar se está dentro da faixa de datas
+                if (orcamento.getDataGeracao() != null && 
+                    !orcamento.getDataGeracao().isBefore(dataInicial) && 
+                    !orcamento.getDataGeracao().isAfter(dataFinal)) {
+                    orcamentos = List.of(orcamento);
+                } else {
+                    orcamentos = List.of(); // Data fora do período
+                }
+            } else {
+                orcamentos = List.of(); // ID não encontrado ou não aprovado
+            }
+        } else if (fornecedorId != null && produtoId != null) {
             orcamentos = orcamentoRepository.findByStatusAprovadoAndDataGeracaoBetweenAndFornecedorAndProduto(
                 dataInicial, dataFinal, fornecedorId, produtoId);
         } else if (fornecedorId != null) {

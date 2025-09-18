@@ -55,7 +55,8 @@ public class OrdemDeCompraController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
             @RequestParam(required = false) Integer fornecedorId,
-            @RequestParam(required = false) Integer produtoId) {
+            @RequestParam(required = false) Integer produtoId,
+            @RequestParam(required = false) Long idOrcamento) {
         
         try {
             if (dataInicial.isAfter(dataFinal)) {
@@ -63,7 +64,7 @@ public class OrdemDeCompraController {
             }
             
             List<OrcamentoDTO> orcamentos = ordemDeCompraService.consultarOrdensDeCompra(
-                dataInicial, dataFinal, fornecedorId, produtoId);
+                dataInicial, dataFinal, fornecedorId, produtoId, idOrcamento);
                 
             return ResponseEntity.ok(orcamentos);
             
