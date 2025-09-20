@@ -2,16 +2,12 @@ package com.br.fasipe.compras.service;
 
 import com.br.fasipe.compras.dto.OrcamentoDTO;
 import com.br.fasipe.compras.model.Fornecedor;
-import com.br.fasipe.compras.model.GrupoAprovador;
 import com.br.fasipe.compras.model.Orcamento;
 import com.br.fasipe.compras.model.Usuario;
-import com.br.fasipe.compras.repository.GrupoAprovadorRepository;
 import com.br.fasipe.compras.repository.OrcamentoRepository;
 import com.br.fasipe.compras.repository.UsuarioRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -28,9 +24,6 @@ public class OrdemDeCompraService {
     private UsuarioRepository usuarioRepository;
     
     @Autowired
-    private GrupoAprovadorRepository grupoAprovadorRepository;
-    
-    @Autowired
     private PdfGenerationService pdfGenerationService;
     
     public List<OrcamentoDTO> buscarOrcamentosPendentes() {
@@ -42,14 +35,11 @@ public class OrdemDeCompraService {
     
     @Transactional
     public byte[] processarEGerarOrdens(List<Long> orcamentoIdsAprovados) {
-        // Obter usuário logado
-        Usuario usuarioLogado = obterUsuarioLogado();
+        // Obter usuário padrão (ID=1) para auditoria
+        Usuario usuarioPadrao = obterUsuarioPadrao();
         
         // Buscar orçamentos aprovados
         List<Orcamento> orcamentosAprovados = orcamentoRepository.findAllById(orcamentoIdsAprovados);
-        
-        // Verificar se o usuário tem permissão para aprovar todos os orçamentos
-        verificarPermissaoAprovacao(usuarioLogado, orcamentosAprovados);
         
         // Extrair IDs únicos dos produtos
         Set<Integer> produtoIds = orcamentosAprovados.stream()
@@ -64,7 +54,7 @@ public class OrdemDeCompraService {
         for (Orcamento orcamento : orcamentosAprovados) {
             orcamento.setStatus("aprovado");
             orcamento.setDataGeracao(agora);
-            orcamento.setUsuarioAprovador(usuarioLogado);
+            orcamento.setUsuarioAprovador(usuarioPadrao);
         }
         
         // Salvar alterações
@@ -75,7 +65,7 @@ public class OrdemDeCompraService {
             .collect(Collectors.groupingBy(Orcamento::getFornecedor));
         
         // Gerar PDFs e compactar
-        return pdfGenerationService.gerarPdfsECompactar(orcamentosPorFornecedor, usuarioLogado.getLoginUsuario());
+        return pdfGenerationService.gerarPdfsECompactar(orcamentosPorFornecedor, "Sistema de Compras");
     }
     
     public List<OrcamentoDTO> consultarOrdensDeCompra(LocalDate dataInicial, LocalDate dataFinal, 
@@ -116,24 +106,10 @@ public class OrdemDeCompraService {
             .collect(Collectors.toList());
     }
     
-    private Usuario obterUsuarioLogado() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String login = authentication.getName();
-        return usuarioRepository.findByLoginUsuario(login)
-            .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + login));
-    }
-    
-    private void verificarPermissaoAprovacao(Usuario usuario, List<Orcamento> orcamentos) {
-        List<GrupoAprovador> gruposDoUsuario = grupoAprovadorRepository.findByUsuarioIdAndStatusAtivo(usuario.getIdUsuario());
-        Set<Long> gruposPermitidos = gruposDoUsuario.stream()
-            .map(GrupoAprovador::getIdGrupoAprovador)
-            .collect(Collectors.toSet());
-        
-        for (Orcamento orcamento : orcamentos) {
-            if (!gruposPermitidos.contains(orcamento.getGrupoAprovador().getIdGrupoAprovador())) {
-                throw new RuntimeException("Usuário não tem permissão para aprovar o orçamento ID: " + orcamento.getIdOrcamento());
-            }
-        }
+    private Usuario obterUsuarioPadrao() {
+        // Usar usuário com ID=1 como padrão para auditoria
+        return usuarioRepository.findById(1L)
+            .orElseThrow(() -> new RuntimeException("Usuário padrão (ID=1) não encontrado no banco de dados"));
     }
     
     private OrcamentoDTO convertToDTO(Orcamento orcamento) {

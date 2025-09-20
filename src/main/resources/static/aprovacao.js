@@ -15,27 +15,6 @@ const statsDiv = document.getElementById('statsDiv');
 // Carregamento inicial
 document.addEventListener('DOMContentLoaded', function() {
     carregarOrcamentos();
-    
-    // Configurar dropdown do menu do usuário
-    const userMenuBtn = document.getElementById('userMenuBtn');
-    const userDropdown = document.getElementById('userDropdown');
-    
-    if (userMenuBtn && userDropdown) {
-        userMenuBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            userDropdown.classList.toggle('show');
-        });
-        
-        // Fechar dropdown ao clicar fora
-        document.addEventListener('click', function() {
-            userDropdown.classList.remove('show');
-        });
-        
-        // Impedir que o dropdown feche ao clicar nele
-        userDropdown.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-    }
 });
 
 // Configuração do botão de gerar ordens
@@ -366,18 +345,4 @@ function formatarMoeda(valor) {
 function formatarData(dataString) {
     const data = new Date(dataString);
     return data.toLocaleDateString('pt-BR');
-}
-
-/**
- * Função de logout
- */
-function logout() {
-    if (confirm('Deseja realmente sair do sistema?')) {
-        // Limpar qualquer dado de sessão local
-        sessionStorage.clear();
-        localStorage.clear();
-        
-        // Redirecionar para a página de login
-        window.location.href = 'login.html';
-    }
 }

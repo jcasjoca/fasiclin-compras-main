@@ -30,33 +30,9 @@ const filtros = {
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     configurarEventListeners();
-    configurarMenuUsuario();
     // Removido: definirDatasPadrao() - não carregar automaticamente
     // Removido: consultarOrdens() - usuário deve consultar manualmente
 });
-
-function configurarMenuUsuario() {
-    // Configurar dropdown do menu do usuário
-    const userMenuBtn = document.getElementById('userMenuBtn');
-    const userDropdown = document.getElementById('userDropdown');
-    
-    if (userMenuBtn && userDropdown) {
-        userMenuBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            userDropdown.classList.toggle('show');
-        });
-        
-        // Fechar dropdown ao clicar fora
-        document.addEventListener('click', function() {
-            userDropdown.classList.remove('show');
-        });
-        
-        // Impedir que o dropdown feche ao clicar nele
-        userDropdown.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-    }
-}
 
 function configurarEventListeners() {
     consultarBtn.addEventListener('click', consultarOrdens);
@@ -630,18 +606,4 @@ function traduzirStatus(status) {
         'REJEITADO': 'Rejeitado'
     };
     return traducoes[status] || status;
-}
-
-/**
- * Função de logout
- */
-function logout() {
-    if (confirm('Deseja realmente sair do sistema?')) {
-        // Limpar qualquer dado de sessão local
-        sessionStorage.clear();
-        localStorage.clear();
-        
-        // Redirecionar para a página de login
-        window.location.href = 'login.html';
-    }
 }
