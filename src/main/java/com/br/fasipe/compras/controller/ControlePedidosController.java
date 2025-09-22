@@ -40,9 +40,9 @@ public class ControlePedidosController {
             headers.setContentDispositionFormData("attachment", "OrdensDeCompra.zip");
             
             return ResponseEntity.ok()
-                .headers(headers)
-                .body(zipBytes);
-                
+                    .headers(headers)
+                    .body(zipBytes);
+                    
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
@@ -54,8 +54,9 @@ public class ControlePedidosController {
     public ResponseEntity<List<OrcamentoDTO>> consultarOrdensDeCompra(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
-            @RequestParam(required = false) Integer fornecedorId,
-            @RequestParam(required = false) Integer produtoId,
+            // CORREÇÃO APLICADA ABAIXO: Integer foi trocado para Long
+            @RequestParam(required = false) Long fornecedorId,
+            @RequestParam(required = false) Long produtoId,
             @RequestParam(required = false) Long idOrcamento) {
         
         try {

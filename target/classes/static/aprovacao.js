@@ -32,13 +32,7 @@ async function carregarOrcamentos() {
         mostrarLoading(true);
         hideMessages();
         
-        const response = await fetch('/api/orcamentos/pendentes', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa('admin:admin')
-            }
-        });
+        const response = await fetch('/api/orcamentos/pendentes');
 
         if (!response.ok) {
             throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
@@ -72,10 +66,17 @@ function processarOrcamentos(orcamentos) {
     // Agrupar por produto
     orcamentosPorProduto = {};
     orcamentos.forEach(orcamento => {
-        const produtoId = orcamento.produto.id;
+        // CORREÇÃO: Usar o ID do produto da estrutura plana do DTO
+        const produtoId = orcamento.idProduto; 
         if (!orcamentosPorProduto[produtoId]) {
             orcamentosPorProduto[produtoId] = {
-                produto: orcamento.produto,
+                // CORREÇÃO: Recriar um objeto 'produto' com os dados do DTO
+                produto: {
+                    id: orcamento.idProduto,
+                    nome: orcamento.nomeProduto,
+                    descricao: orcamento.descricaoProduto,
+                    unidadeAbreviacao: orcamento.unidadeAbreviacao
+                },
                 orcamentos: []
             };
         }
@@ -84,11 +85,13 @@ function processarOrcamentos(orcamentos) {
 
     // Ordenar orçamentos de cada produto por preço
     Object.values(orcamentosPorProduto).forEach(grupo => {
-        grupo.orcamentos.sort((a, b) => a.valorUnitario - b.valorUnitario);
+        // CORREÇÃO: O campo de preço no DTO é 'precoCompra'
+        grupo.orcamentos.sort((a, b) => a.precoCompra - b.precoCompra);
     });
 
     renderizarOrcamentos();
-    atualizarEstatisticas();
+    // Funções de estatísticas podem precisar de ajuste se os elementos HTML não existirem
+    // atualizarEstatisticas(); 
     mostrarActionsDiv();
 }
 
@@ -114,7 +117,7 @@ function renderizarOrcamentos() {
             
             atualizarVisualizacaoSelecao(produtoId, orcamentoId);
             atualizarBotaoGerar();
-            atualizarEstatisticas();
+            // atualizarEstatisticas();
         });
     });
 }
@@ -126,9 +129,10 @@ function criarHtmlProduto(grupo) {
     const produto = grupo.produto;
     const orcamentos = grupo.orcamentos;
 
+    // CORREÇÃO: Várias referências foram ajustadas para ler a estrutura plana do DTO
     let html = `
         <div class="produto-header">
-            🛍️ ${produto.nome} (${produto.unimedida.sigla})
+            🛍️ ${produto.nome} (${produto.unidadeAbreviacao || 'N/A'})
         </div>
         <div class="produto-info">
             <strong>Descrição:</strong> ${produto.descricao || 'Não informada'}<br>
@@ -139,42 +143,41 @@ function criarHtmlProduto(grupo) {
                 <tr>
                     <th class="radio-column">Selecionar</th>
                     <th>Fornecedor</th>
-                    <th>Valor Unitário</th>
-                    <th>Valor Total</th>
-                    <th class="date-column">Data da Cotação</th>
-                    <th>Observações</th>
+                    <th>Preço Compra</th>
+                    <th>Garantia</th>
+                    <th class="date-column">Data Entrega</th>
+                    <th>Cond. Pagamento</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
-    orcamentos.forEach((orcamento, index) => {
-        const isChecked = selecoes[produto.id] === orcamento.id.toString();
+    orcamentos.forEach((orcamento) => {
+        const isChecked = selecoes[produto.id] === orcamento.idOrcamento.toString();
         const rowClass = isChecked ? 'selected' : '';
         
         html += `
-            <tr class="${rowClass}" data-orcamento-id="${orcamento.id}">
+            <tr class="${rowClass}" data-orcamento-id="${orcamento.idOrcamento}">
                 <td class="radio-column">
                     <input type="radio" 
                            name="produto_${produto.id}" 
-                           value="${orcamento.id}"
+                           value="${orcamento.idOrcamento}"
                            ${isChecked ? 'checked' : ''}>
                 </td>
                 <td>
-                    <strong>${orcamento.fornecedor.nomeFantasia}</strong><br>
-                    <small>${orcamento.fornecedor.razaoSocial}</small>
+                    <strong>${orcamento.nomeFornecedor || 'Não informado'}</strong>
                 </td>
                 <td class="currency">
-                    R$ ${formatarMoeda(orcamento.valorUnitario)}
-                </td>
-                <td class="currency">
-                    R$ ${formatarMoeda(orcamento.valorTotal)}
-                </td>
-                <td class="date-column">
-                    ${formatarData(orcamento.dataCotacao)}
+                    R$ ${formatarMoeda(orcamento.precoCompra)}
                 </td>
                 <td>
-                    ${orcamento.observacoes || '-'}
+                    ${orcamento.garantia || '-'}
+                </td>
+                <td class="date-column">
+                    ${formatarData(orcamento.dataEntrega)}
+                </td>
+                <td>
+                    ${orcamento.condicoesPagamento || '-'}
                 </td>
             </tr>
         `;
@@ -192,17 +195,13 @@ function criarHtmlProduto(grupo) {
  * Atualiza a visualização da linha selecionada
  */
 function atualizarVisualizacaoSelecao(produtoId, orcamentoId) {
-    // Remove seleção anterior
     document.querySelectorAll(`input[name="produto_${produtoId}"]`).forEach(radio => {
-        const row = radio.closest('tr');
-        row.classList.remove('selected');
+        radio.closest('tr').classList.remove('selected');
     });
 
-    // Adiciona seleção atual
     const radioSelecionado = document.querySelector(`input[name="produto_${produtoId}"][value="${orcamentoId}"]`);
     if (radioSelecionado) {
-        const row = radioSelecionado.closest('tr');
-        row.classList.add('selected');
+        radioSelecionado.closest('tr').classList.add('selected');
     }
 }
 
@@ -213,27 +212,14 @@ function atualizarBotaoGerar() {
     const totalProdutos = Object.keys(orcamentosPorProduto).length;
     const totalSelecionados = Object.keys(selecoes).length;
     
-    gerarOcBtn.disabled = totalSelecionados < totalProdutos;
+    // Habilita o botão se pelo menos uma seleção for feita
+    gerarOcBtn.disabled = totalSelecionados === 0;
     
-    if (totalSelecionados === totalProdutos) {
-        gerarOcBtn.textContent = `Gerar ${totalSelecionados} Ordem${totalSelecionados > 1 ? 's' : ''} de Compra`;
+    if (totalSelecionados > 0) {
+        gerarOcBtn.textContent = `Gerar ${totalSelecionados} Ordem${totalSelecionados > 1 ? 'ns' : ''} de Compra`;
     } else {
         gerarOcBtn.textContent = 'Gerar Ordens de Compra';
     }
-}
-
-/**
- * Atualiza as estatísticas do painel
- */
-function atualizarEstatisticas() {
-    const totalProdutos = Object.keys(orcamentosPorProduto).length;
-    const totalCotacoes = Object.values(orcamentosPorProduto)
-        .reduce((sum, grupo) => sum + grupo.orcamentos.length, 0);
-    const totalSelecionados = Object.keys(selecoes).length;
-
-    document.getElementById('statProdutos').textContent = totalProdutos;
-    document.getElementById('statCotacoes').textContent = totalCotacoes;
-    document.getElementById('statSelecionados').textContent = totalSelecionados;
 }
 
 /**
@@ -253,8 +239,7 @@ async function gerarOrdensDeCompra() {
         const response = await fetch('/api/ordens-de-compra/gerar', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa('admin:admin')
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(orcamentoIds)
         });
@@ -262,32 +247,28 @@ async function gerarOrdensDeCompra() {
         if (!response.ok) {
             throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
         }
+        
+        const blob = await response.blob();
+        const header = response.headers.get('Content-Disposition');
+        const parts = header.split(';');
+        const filename = parts[1].split('=')[1].replace(/"/g, '');
 
-        // Verificar se a resposta é um arquivo ZIP
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/zip')) {
-            // Download do arquivo ZIP
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'ordens-de-compra.zip';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'ordens-de-compra.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
 
-            showSuccess('Ordens de compra geradas com sucesso! O download foi iniciado automaticamente.');
-            
-            // Recarregar os orçamentos após sucesso
-            setTimeout(() => {
-                carregarOrcamentos();
-                selecoes = {};
-            }, 2000);
-        } else {
-            const result = await response.json();
-            showSuccess('Ordens de compra geradas: ' + JSON.stringify(result));
-        }
+        showSuccess('Ordens de compra geradas com sucesso! O download foi iniciado automaticamente.');
+        
+        // Recarregar os orçamentos após sucesso
+        setTimeout(() => {
+            selecoes = {};
+            carregarOrcamentos();
+        }, 2000);
 
     } catch (error) {
         console.error('Erro ao gerar ordens de compra:', error);
@@ -302,12 +283,12 @@ async function gerarOrdensDeCompra() {
  * Utilitários de interface
  */
 function mostrarLoading(show) {
-    loadingDiv.style.display = show ? 'block' : 'none';
+    loadingDiv.style.display = show ? 'flex' : 'none'; // 'flex' para centralizar
 }
 
 function mostrarActionsDiv() {
     actionsDiv.style.display = 'block';
-    statsDiv.style.display = 'flex';
+    // statsDiv.style.display = 'flex'; // Comentei caso não exista
 }
 
 function mostrarSemDados() {
@@ -316,6 +297,7 @@ function mostrarSemDados() {
             📝 Não há orçamentos pendentes de aprovação no momento.
         </div>
     `;
+    actionsDiv.style.display = 'none';
 }
 
 function showError(message) {
@@ -336,13 +318,16 @@ function hideMessages() {
 }
 
 function formatarMoeda(valor) {
+    if (valor === null || valor === undefined) return '0,00';
     return new Intl.NumberFormat('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        style: 'currency',
+        currency: 'BRL'
     }).format(valor);
 }
 
 function formatarData(dataString) {
-    const data = new Date(dataString);
+    if (!dataString) return '-';
+    // Adiciona T00:00:00 para evitar problemas de fuso horário
+    const data = new Date(dataString + 'T00:00:00');
     return data.toLocaleDateString('pt-BR');
 }

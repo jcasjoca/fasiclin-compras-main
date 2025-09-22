@@ -45,8 +45,7 @@ public class OrcamentoDTO {
     private String status;
     private LocalDate dataGeracao;
     
-    // Campos calculados
-    private BigDecimal valorTotal;
+   
     
     public BigDecimal getValorTotal() {
         if (precoCompra != null && quantidade != null) {
