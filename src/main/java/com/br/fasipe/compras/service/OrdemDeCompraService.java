@@ -10,9 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,33 +42,42 @@ public class OrdemDeCompraService {
         if (orcamentoIdsAprovados == null || orcamentoIdsAprovados.isEmpty()) {
             return;
         }
-
         Usuario usuarioPadrao = obterUsuarioPadrao();
-        
         List<Orcamento> orcamentosAprovados = orcamentoRepository.findAllById(orcamentoIdsAprovados);
-        
         if (orcamentosAprovados.isEmpty()) {
             return;
         }
-
         Set<Integer> produtoIds = orcamentosAprovados.stream()
                 .map(orcamento -> orcamento.getProduto().getId())
                 .collect(Collectors.toSet());
-        
         if (!produtoIds.isEmpty()) {
              orcamentoRepository.reprovarConcorrentes(produtoIds, orcamentoIdsAprovados);
         }
-        
         LocalDate agora = LocalDate.now();
         for (Orcamento orcamento : orcamentosAprovados) {
             orcamento.setStatus("aprovado");
             orcamento.setDataGeracao(agora);
             orcamento.setUsuarioAprovador(usuarioPadrao);
         }
-        
         orcamentoRepository.saveAll(orcamentosAprovados);
     }
+    
+    public byte[] gerarPdfUnicoPorId(Long orcamentoId) {
+        Optional<Orcamento> orcamentoOpt = orcamentoRepository.findById(orcamentoId);
+        if (orcamentoOpt.isEmpty()) {
+            return new byte[0];
+        }
 
+        Orcamento orcamento = orcamentoOpt.get();
+        String status = orcamento.getStatus() != null ? orcamento.getStatus().toLowerCase() : "";
+
+        if ("aprovado".equals(status) || "reprovado".equals(status)) {
+            return pdfGenerationService.gerarPdfUnico(orcamento);
+        }
+        
+        return new byte[0];
+    }
+    
     public byte[] gerarPdfsPorIds(List<Long> orcamentoIds) {
         if (orcamentoIds == null || orcamentoIds.isEmpty()) {
             return new byte[0];
@@ -74,33 +85,32 @@ public class OrdemDeCompraService {
         
         List<Orcamento> orcamentosParaBaixar = orcamentoRepository.findAllById(orcamentoIds);
 
-        List<Orcamento> orcamentosAprovados = orcamentosParaBaixar.stream()
-                .filter(o -> "aprovado".equalsIgnoreCase(o.getStatus())) // Usando equalsIgnoreCase por segurança
+        List<Orcamento> orcamentosValidos = orcamentosParaBaixar.stream()
+                .filter(o -> "aprovado".equalsIgnoreCase(o.getStatus()) || "reprovado".equalsIgnoreCase(o.getStatus()))
                 .collect(Collectors.toList());
 
-        if (orcamentosAprovados.isEmpty()) {
+        if (orcamentosValidos.isEmpty()) {
             return new byte[0];
         }
         
-        Map<Fornecedor, List<Orcamento>> orcamentosPorFornecedor = orcamentosAprovados.stream()
+        Map<Fornecedor, List<Orcamento>> orcamentosPorFornecedor = orcamentosValidos.stream()
                 .collect(Collectors.groupingBy(Orcamento::getFornecedor));
                 
         return pdfGenerationService.gerarPdfsECompactar(orcamentosPorFornecedor, "Sistema de Compras");
     }
 
+    // CORREÇÃO: Adicionados os novos parâmetros valorMinimo e valorMaximo
     public List<OrcamentoDTO> consultarOrdensDeCompra(LocalDate dataInicial, LocalDate dataFinal, 
-                                                  String fornecedorNome, String produtoNome, Long idOrcamento, String status) {
+                                                      String fornecedorNome, String produtoNome, Long idOrcamento, 
+                                                      String status, BigDecimal valorMinimo, BigDecimal valorMaximo) {
         
-        // ***** A CORREÇÃO ESTÁ AQUI *****
-        // Se o status for uma string vazia ou a palavra "todos" (ignorando maiúsculas/minúsculas),
-        // nós o transformamos em null.
-        // A query no repositório já está preparada para ignorar o filtro quando o status é null.
         if (status != null && (status.trim().isEmpty() || status.equalsIgnoreCase("todos"))) {
             status = null;
         }
-
-        List<Orcamento> orcamentos = orcamentoRepository.findWithFilters(dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status);
         
+        List<Orcamento> orcamentos = orcamentoRepository.findWithFilters(
+            dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status, valorMinimo, valorMaximo);
+            
         return orcamentos.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -117,29 +127,30 @@ public class OrdemDeCompraService {
         dto.setDataEmissao(orcamento.getDataEmissao());
         dto.setDataValidade(orcamento.getDataValidade());
         dto.setDataEntrega(orcamento.getDataEntrega());
-
+        
         if (orcamento.getFornecedor() != null) {
             dto.setIdFornecedor(orcamento.getFornecedor().getId());
             dto.setNomeFornecedor(orcamento.getFornecedor().getDescricao());
         }
-
+        
         if (orcamento.getProduto() != null) {
             dto.setIdProduto(orcamento.getProduto().getId());
             dto.setNomeProduto(orcamento.getProduto().getNome());
             dto.setDescricaoProduto(orcamento.getProduto().getDescricao());
         }
-
+        
         if (orcamento.getUnidadeMedida() != null) {
+            dto.setIdUnidadeMedida(orcamento.getUnidadeMedida().getId());
             dto.setUnidadeAbreviacao(orcamento.getUnidadeMedida().getUnidadeAbreviacao());
         }
-
+        
         dto.setGarantia(orcamento.getGarantia());
         dto.setCondicoesPagamento(orcamento.getCondicoesPagamento());
         dto.setPrecoCompra(orcamento.getPrecoCompra());
         dto.setQuantidade(orcamento.getQuantidade());
         dto.setStatus(orcamento.getStatus());
         dto.setDataGeracao(orcamento.getDataGeracao());
-
+        
         if (orcamento.getUsuarioAprovador() != null) {
             dto.setIdUserApprove(orcamento.getUsuarioAprovador().getIdUsuario());
         }

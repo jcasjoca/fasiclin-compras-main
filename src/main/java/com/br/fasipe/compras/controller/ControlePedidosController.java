@@ -9,13 +9,14 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*") // Permite que seu frontend acesse a API
+@CrossOrigin(origins = "*")
 public class ControlePedidosController {
     
     @Autowired
@@ -27,7 +28,6 @@ public class ControlePedidosController {
             List<OrcamentoDTO> orcamentos = ordemDeCompraService.buscarOrcamentosPendentes();
             return ResponseEntity.ok(orcamentos);
         } catch (Exception e) {
-            // Log do erro é uma boa prática: e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -39,12 +39,11 @@ public class ControlePedidosController {
             Map<String, String> response = Map.of("message", "Orçamentos processados com sucesso!");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            // e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }
     
-    // CORRIGIDO: Este endpoint agora aceita todos os filtros como opcionais
+    // CORREÇÃO: Adicionados os novos parâmetros valorMinimo e valorMaximo
     @GetMapping("/ordens-de-compra")
     public ResponseEntity<List<OrcamentoDTO>> consultarOrdensDeCompra(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
@@ -52,21 +51,41 @@ public class ControlePedidosController {
             @RequestParam(required = false) String fornecedorNome,
             @RequestParam(required = false) String produtoNome,
             @RequestParam(required = false) Long idOrcamento,
-            @RequestParam(required = false) String status) { 
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) BigDecimal valorMinimo,
+            @RequestParam(required = false) BigDecimal valorMaximo) { 
         
         try {
-            // Validação de datas apenas se ambas forem fornecidas
             if (dataInicial != null && dataFinal != null && dataInicial.isAfter(dataFinal)) {
                 return ResponseEntity.badRequest().build();
             }
             
             List<OrcamentoDTO> orcamentos = ordemDeCompraService.consultarOrdensDeCompra(
-                dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status);
+                dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status, valorMinimo, valorMaximo);
                 
             return ResponseEntity.ok(orcamentos);
             
         } catch (Exception e) {
-            // e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/ordens-de-compra/visualizar/{id}")
+    public ResponseEntity<byte[]> visualizarPdfUnico(@PathVariable Long id) {
+        try {
+            byte[] pdfBytes = ordemDeCompraService.gerarPdfUnicoPorId(id);
+
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                return ResponseEntity.notFound().build();
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            // Define o header para abrir no navegador, e não baixar
+            headers.setContentDispositionFormData("inline", "OrdemDeCompra_" + id + ".pdf");
+            
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+        } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -86,7 +105,6 @@ public class ControlePedidosController {
             
             return ResponseEntity.ok().headers(headers).body(zipBytes);
         } catch (Exception e) {
-            // e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }

@@ -7,18 +7,24 @@
     <link rel="stylesheet" href="consulta.css">
 </head>
 <body>
+    <!-- Cabeçalho com logo -->
     <header class="header-top">
-        <div class="header-logo"><h1>Fasi<span>comércio</span></h1></div>
+        <div class="header-logo">
+            <h1>Fasi<span>comércio</span></h1>
+        </div>
     </header>
 
+    <!-- Layout principal -->
     <div class="main-layout">
+        <!-- Menu lateral -->
         <aside class="sidebar">
             <nav class="sidebar-menu">
                 <a href="aprovacao.html" class="menu-item">Controle de Pedidos</a>
-                <a href="consulta.html" class="menu-item active">Pedidos Aprovados</a>
+                <a href="#" class="menu-item active">Pedidos Aprovados</a>
             </nav>
         </aside>
 
+        <!-- Área de conteúdo -->
         <main class="content-area">
             <div class="page-header">
                 <h1>🔍 Consulta de Ordens de Compra</h1>
@@ -27,61 +33,109 @@
 
             <div class="filters">
                 <div class="filter-row">
-                    <div class="filter-group"><label for="idPedido">ID do Pedido:</label><input type="number" id="idPedido" placeholder="ID do pedido..."></div>
-                    <div class="filter-group"><label for="dataInicio">Data Início:</label><input type="date" id="dataInicio"></div>
-                    <div class="filter-group"><label for="dataFim">Data Fim:</label><input type="date" id="dataFim"></div>
-                    <div class="filter-group"><label for="fornecedor">Fornecedor:</label><input type="text" id="fornecedor" placeholder="Nome do fornecedor..."></div>
+                    <div class="filter-group">
+                        <label for="idPedido">ID do Pedido:</label>
+                        <input type="number" id="idPedido" name="idPedido" 
+                               placeholder="ID do pedido..." min="1">
+                    </div>
+                    <div class="filter-group">
+                        <label for="dataInicio">Data Início:</label>
+                        <input type="date" id="dataInicio" name="dataInicio">
+                    </div>
+                    <div class="filter-group">
+                        <label for="dataFim">Data Fim:</label>
+                        <input type="date" id="dataFim" name="dataFim">
+                    </div>
+                    <div class="filter-group">
+                        <label for="fornecedor">Fornecedor:</label>
+                        <input type="text" id="fornecedor" name="fornecedor" 
+                               placeholder="Nome do fornecedor...">
+                    </div>
                 </div>
                 <div class="filter-row">
-                    <div class="filter-group"><label for="produto">Produto:</label><input type="text" id="produto" placeholder="Nome do produto..."></div>
-                    <div class="filter-group"><label for="status">Status:</label>
-                        <select id="status">
+                    <div class="filter-group">
+                        <label for="produto">Produto:</label>
+                        <input type="text" id="produto" name="produto" 
+                               placeholder="Nome do produto...">
+                    </div>
+                    <div class="filter-group">
+                        <label for="status">Status:</label>
+                        <select id="status" name="status">
                             <option value="">Todos</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="aprovado">Aprovado</option>
-                            <option value="reprovado">Reprovado</option>
+                            <option value="PENDENTE">Pendente</option>
+                            <option value="APROVADO">Aprovado</option>
+                            <option value="REJEITADO">Rejeitado</option>
                         </select>
                     </div>
+                    <div class="filter-group">
+                        <label for="valorMinimo">Valor Mínimo:</label>
+                        <input type="number" id="valorMinimo" name="valorMinimo" 
+                               step="0.01" placeholder="0,00" min="0">
+                    </div>
+                    <div class="filter-group">
+                        <label for="valorMaximo">Valor Máximo:</label>
+                        <input type="number" id="valorMaximo" name="valorMaximo" 
+                               step="0.01" placeholder="0,00" min="0">
+                    </div>
                     <div style="margin-left: auto; display: flex; gap: 10px;">
-                        <button type="button" id="limparFiltros" class="btn-secondary">🗑️ Limpar</button>
-                        <button type="button" id="consultarBtn" class="btn-primary">🔍 Consultar</button>
+                        <button type="button" id="limparFiltros" class="btn-secondary">
+                            🗑️ Limpar
+                        </button>
+                        <button type="button" id="consultarBtn" class="btn-primary">
+                            🔍 Consultar
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div id="loadingDiv" class="loading" style="display: none;">Carregando...</div>
+            <div id="loadingDiv" class="loading" style="display: none;">
+                Carregando ordens de compra...
+            </div>
+
             <div id="errorDiv" class="error" style="display: none;"></div>
 
             <div id="resultsDiv" class="results-container" style="display: none;">
                 <div class="results-header">
-                    <div class="results-count" id="resultsCount"></div>
+                    <div class="results-count" id="resultsCount">
+                        0 ordens encontradas
+                    </div>
+                    <div>
+                        <small id="lastUpdate"></small>
+                    </div>
                 </div>
                 <div class="table-container">
                     <table class="results-table">
                         <thead>
                             <tr>
-                                <th><input type="checkbox" id="selectAllCheckbox" title="Selecionar Todos"></th>
                                 <th>ID</th>
                                 <th>Data</th>
                                 <th>Fornecedor</th>
                                 <th>Produto</th>
-                                <th>Qtd</th>
+                                <th>Quantidade</th>
+                                <th>Valor Unitário</th>
                                 <th>Valor Total</th>
                                 <th>Status</th>
-                                <th>Ações</th> <!-- NOVA COLUNA -->
+                                <th>Observações</th>
                             </tr>
                         </thead>
-                        <tbody id="resultsTableBody"></tbody>
+                        <tbody id="resultsTableBody">
+                        </tbody>
                     </table>
                 </div>
-                <div class="results-footer">
-                     <!-- BOTÃO MOVIDO PARA O FINAL -->
-                    <button type="button" id="baixarBtn" class="btn-primary" disabled>📄 Baixar Selecionados</button>
+                <div class="export-section">
+                    <button type="button" id="exportPdfBtn" class="btn-export" disabled>
+                        📄 Exportar PDF
+                    </button>
+                    <button type="button" id="exportExcelBtn" class="btn-export" disabled>
+                        📊 Exportar Excel
+                    </button>
                 </div>
             </div>
 
-            <div id="noResultsDiv" class="no-results" style="display: none;">
-                📋 Nenhuma ordem de compra encontrada com os filtros aplicados.
+            <div id="noResultsDiv" class="results-container" style="display: none;">
+                <div class="no-results">
+                    📋 Nenhuma ordem de compra encontrada com os filtros aplicados.
+                </div>
             </div>
         </main>
     </div>
@@ -89,4 +143,3 @@
     <script src="consulta.js"></script>
 </body>
 </html>
-

@@ -1,5 +1,6 @@
 package com.br.fasipe.compras.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -44,11 +45,11 @@ public class OrcamentoDTO {
     private String nomeUsuarioAprovador;
     private String status;
     private LocalDate dataGeracao;
-    
-   
-    
+    private String observacoes; // Adicionado para a tela de aprovação
+
+    // Este método calcula o valor total e será incluído no JSON de resposta.
     public BigDecimal getValorTotal() {
-        if (precoCompra != null && quantidade != null) {
+        if (precoCompra != null && quantidade != null && quantidade > 0) {
             return precoCompra.multiply(BigDecimal.valueOf(quantidade));
         }
         return BigDecimal.ZERO;
