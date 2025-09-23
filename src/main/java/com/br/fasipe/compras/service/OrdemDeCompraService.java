@@ -35,13 +35,10 @@ public class OrdemDeCompraService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * NOVO MÉTODO: Apenas processa o status no banco de dados. Não gera PDFs.
-     */
     @Transactional
     public void processarStatus(List<Long> orcamentoIdsAprovados) {
         if (orcamentoIdsAprovados == null || orcamentoIdsAprovados.isEmpty()) {
-            return; // Nada a fazer
+            return;
         }
 
         Usuario usuarioPadrao = obterUsuarioPadrao();
@@ -52,7 +49,6 @@ public class OrdemDeCompraService {
             return;
         }
 
-        // CORREÇÃO: Usando Set<Integer> para corresponder ao tipo de ID da entidade Produto
         Set<Integer> produtoIds = orcamentosAprovados.stream()
                 .map(orcamento -> orcamento.getProduto().getId())
                 .collect(Collectors.toSet());
@@ -71,9 +67,6 @@ public class OrdemDeCompraService {
         orcamentoRepository.saveAll(orcamentosAprovados);
     }
 
-    /**
-     * NOVO MÉTODO: Apenas gera os PDFs para os IDs fornecidos.
-     */
     public byte[] gerarPdfsPorIds(List<Long> orcamentoIds) {
         if (orcamentoIds == null || orcamentoIds.isEmpty()) {
             return new byte[0];
@@ -81,9 +74,8 @@ public class OrdemDeCompraService {
         
         List<Orcamento> orcamentosParaBaixar = orcamentoRepository.findAllById(orcamentoIds);
 
-        // Filtra para garantir que apenas orçamentos aprovados sejam incluídos no PDF
         List<Orcamento> orcamentosAprovados = orcamentosParaBaixar.stream()
-                .filter(o -> "aprovado".equals(o.getStatus()))
+                .filter(o -> "aprovado".equalsIgnoreCase(o.getStatus())) // Usando equalsIgnoreCase por segurança
                 .collect(Collectors.toList());
 
         if (orcamentosAprovados.isEmpty()) {
@@ -96,20 +88,25 @@ public class OrdemDeCompraService {
         return pdfGenerationService.gerarPdfsECompactar(orcamentosPorFornecedor, "Sistema de Compras");
     }
 
-    /**
-     * Método de consulta que agora aceita o status como filtro.
-     */
     public List<OrcamentoDTO> consultarOrdensDeCompra(LocalDate dataInicial, LocalDate dataFinal, 
                                                   String fornecedorNome, String produtoNome, Long idOrcamento, String status) {
-    // A chamada agora passa os nomes (String) para o repositório
-    List<Orcamento> orcamentos = orcamentoRepository.findWithFilters(dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status);
-    return orcamentos.stream()
-            .map(this::convertToDTO)
-            .collect(Collectors.toList());
-}
+        
+        // ***** A CORREÇÃO ESTÁ AQUI *****
+        // Se o status for uma string vazia ou a palavra "todos" (ignorando maiúsculas/minúsculas),
+        // nós o transformamos em null.
+        // A query no repositório já está preparada para ignorar o filtro quando o status é null.
+        if (status != null && (status.trim().isEmpty() || status.equalsIgnoreCase("todos"))) {
+            status = null;
+        }
+
+        List<Orcamento> orcamentos = orcamentoRepository.findWithFilters(dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status);
+        
+        return orcamentos.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
     
     private Usuario obterUsuarioPadrao() {
-        // CORREÇÃO APLICADA: Busca pelo ID 11, que existe no seu banco.
         return usuarioRepository.findById(11L)
                 .orElseThrow(() -> new RuntimeException("Usuário padrão (ID=11) não encontrado no banco de dados"));
     }
@@ -150,3 +147,4 @@ public class OrdemDeCompraService {
         return dto;
     }
 }
+
