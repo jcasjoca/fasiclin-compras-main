@@ -10,7 +10,7 @@ const successDiv = document.getElementById('successDiv');
 const orcamentosContainer = document.getElementById('orcamentosContainer');
 const actionsDiv = document.getElementById('actionsDiv');
 const gerarOcBtn = document.getElementById('gerarOcBtn');
-const statsDiv = document.getElementById('statsDiv');
+// const statsDiv = document.getElementById('statsDiv'); // Removido se não existir
 
 // Carregamento inicial
 document.addEventListener('DOMContentLoaded', function() {
@@ -32,6 +32,7 @@ async function carregarOrcamentos() {
         mostrarLoading(true);
         hideMessages();
         
+        // Removida a autenticação desnecessária
         const response = await fetch('/api/orcamentos/pendentes');
 
         if (!response.ok) {
@@ -66,11 +67,9 @@ function processarOrcamentos(orcamentos) {
     // Agrupar por produto
     orcamentosPorProduto = {};
     orcamentos.forEach(orcamento => {
-        // CORREÇÃO: Usar o ID do produto da estrutura plana do DTO
         const produtoId = orcamento.idProduto; 
         if (!orcamentosPorProduto[produtoId]) {
             orcamentosPorProduto[produtoId] = {
-                // CORREÇÃO: Recriar um objeto 'produto' com os dados do DTO
                 produto: {
                     id: orcamento.idProduto,
                     nome: orcamento.nomeProduto,
@@ -85,13 +84,10 @@ function processarOrcamentos(orcamentos) {
 
     // Ordenar orçamentos de cada produto por preço
     Object.values(orcamentosPorProduto).forEach(grupo => {
-        // CORREÇÃO: O campo de preço no DTO é 'precoCompra'
         grupo.orcamentos.sort((a, b) => a.precoCompra - b.precoCompra);
     });
 
     renderizarOrcamentos();
-    // Funções de estatísticas podem precisar de ajuste se os elementos HTML não existirem
-    // atualizarEstatisticas(); 
     mostrarActionsDiv();
 }
 
@@ -108,7 +104,6 @@ function renderizarOrcamentos() {
         orcamentosContainer.appendChild(produtoDiv);
     });
 
-    // Adicionar event listeners para os radio buttons
     document.querySelectorAll('input[type="radio"]').forEach(radio => {
         radio.addEventListener('change', function() {
             const produtoId = this.name.replace('produto_', '');
@@ -117,7 +112,6 @@ function renderizarOrcamentos() {
             
             atualizarVisualizacaoSelecao(produtoId, orcamentoId);
             atualizarBotaoGerar();
-            // atualizarEstatisticas();
         });
     });
 }
@@ -129,10 +123,9 @@ function criarHtmlProduto(grupo) {
     const produto = grupo.produto;
     const orcamentos = grupo.orcamentos;
 
-    // CORREÇÃO: Várias referências foram ajustadas para ler a estrutura plana do DTO
     let html = `
         <div class="produto-header">
-            🛍️ ${produto.nome} (${produto.unidadeAbreviacao || 'N/A'})
+             ${produto.nome} (${produto.unidadeAbreviacao || 'N/A'})
         </div>
         <div class="produto-info">
             <strong>Descrição:</strong> ${produto.descricao || 'Não informada'}<br>
@@ -168,7 +161,7 @@ function criarHtmlProduto(grupo) {
                     <strong>${orcamento.nomeFornecedor || 'Não informado'}</strong>
                 </td>
                 <td class="currency">
-                    R$ ${formatarMoeda(orcamento.precoCompra)}
+                    ${formatarMoeda(orcamento.precoCompra)}
                 </td>
                 <td>
                     ${orcamento.garantia || '-'}
@@ -192,8 +185,54 @@ function criarHtmlProduto(grupo) {
 }
 
 /**
- * Atualiza a visualização da linha selecionada
+ * ATUALIZADO: Gera as ordens de compra com base nas seleções
  */
+async function gerarOrdensDeCompra() {
+    if (loading) return;
+
+    try {
+        loading = true;
+        gerarOcBtn.disabled = true;
+        gerarOcBtn.textContent = 'Processando...';
+        hideMessages();
+
+        const orcamentoIds = Object.values(selecoes).map(id => parseInt(id));
+
+        // CORREÇÃO: Chama o novo endpoint que apenas processa os dados
+        const response = await fetch('/api/ordens-de-compra/processar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orcamentoIds)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+        }
+
+        // CORREÇÃO: Agora esperamos uma resposta JSON, não um arquivo
+        const result = await response.json();
+        showSuccess(result.message); // Exibe "Orçamentos processados com sucesso!"
+        
+        // Recarrega os orçamentos após o sucesso para os itens sumirem da tela
+        setTimeout(() => {
+            selecoes = {};
+            carregarOrcamentos();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Erro ao processar ordens de compra:', error);
+        showError('Erro ao processar ordens de compra: ' + error.message);
+    } finally {
+        loading = false;
+        // O botão será atualizado quando a lista for recarregada
+    }
+}
+
+
+// --- Funções Utilitárias (sem alterações necessárias) ---
+
 function atualizarVisualizacaoSelecao(produtoId, orcamentoId) {
     document.querySelectorAll(`input[name="produto_${produtoId}"]`).forEach(radio => {
         radio.closest('tr').classList.remove('selected');
@@ -205,120 +244,59 @@ function atualizarVisualizacaoSelecao(produtoId, orcamentoId) {
     }
 }
 
-/**
- * Atualiza o estado do botão de gerar ordens
- */
 function atualizarBotaoGerar() {
-    const totalProdutos = Object.keys(orcamentosPorProduto).length;
     const totalSelecionados = Object.keys(selecoes).length;
     
-    // Habilita o botão se pelo menos uma seleção for feita
     gerarOcBtn.disabled = totalSelecionados === 0;
     
     if (totalSelecionados > 0) {
-        gerarOcBtn.textContent = `Gerar ${totalSelecionados} Ordem${totalSelecionados > 1 ? 'ns' : ''} de Compra`;
+        gerarOcBtn.textContent = `Processar ${totalSelecionados} Seleção${totalSelecionados > 1 ? 'ões' : ''}`;
     } else {
-        gerarOcBtn.textContent = 'Gerar Ordens de Compra';
+        gerarOcBtn.textContent = 'Processar Seleções';
     }
 }
 
-/**
- * Gera as ordens de compra com base nas seleções
- */
-async function gerarOrdensDeCompra() {
-    if (loading) return;
-
-    try {
-        loading = true;
-        gerarOcBtn.disabled = true;
-        gerarOcBtn.textContent = 'Gerando Ordens...';
-        hideMessages();
-
-        const orcamentoIds = Object.values(selecoes).map(id => parseInt(id));
-
-        const response = await fetch('/api/ordens-de-compra/gerar', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(orcamentoIds)
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
-        }
-        
-        const blob = await response.blob();
-        const header = response.headers.get('Content-Disposition');
-        const parts = header.split(';');
-        const filename = parts[1].split('=')[1].replace(/"/g, '');
-
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename || 'ordens-de-compra.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
-        showSuccess('Ordens de compra geradas com sucesso! O download foi iniciado automaticamente.');
-        
-        // Recarregar os orçamentos após sucesso
-        setTimeout(() => {
-            selecoes = {};
-            carregarOrcamentos();
-        }, 2000);
-
-    } catch (error) {
-        console.error('Erro ao gerar ordens de compra:', error);
-        showError('Erro ao gerar ordens de compra: ' + error.message);
-    } finally {
-        loading = false;
-        atualizarBotaoGerar();
-    }
-}
-
-/**
- * Utilitários de interface
- */
 function mostrarLoading(show) {
-    loadingDiv.style.display = show ? 'flex' : 'none'; // 'flex' para centralizar
+    if (loadingDiv) loadingDiv.style.display = show ? 'flex' : 'none';
 }
 
 function mostrarActionsDiv() {
-    actionsDiv.style.display = 'block';
-    // statsDiv.style.display = 'flex'; // Comentei caso não exista
+    if (actionsDiv) actionsDiv.style.display = 'block';
+    // if (statsDiv) statsDiv.style.display = 'flex';
 }
 
 function mostrarSemDados() {
     orcamentosContainer.innerHTML = `
         <div class="no-data">
-            📝 Não há orçamentos pendentes de aprovação no momento.
+            Não há orçamentos pendentes de aprovação no momento.
         </div>
     `;
-    actionsDiv.style.display = 'none';
+    if (actionsDiv) actionsDiv.style.display = 'none';
 }
 
 function showError(message) {
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    successDiv.style.display = 'none';
+    if(errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+     if(successDiv) successDiv.style.display = 'none';
 }
 
 function showSuccess(message) {
-    successDiv.textContent = message;
-    successDiv.style.display = 'block';
-    errorDiv.style.display = 'none';
+    if(successDiv) {
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+    }
+    if(errorDiv) errorDiv.style.display = 'none';
 }
 
 function hideMessages() {
-    errorDiv.style.display = 'none';
-    successDiv.style.display = 'none';
+    if(errorDiv) errorDiv.style.display = 'none';
+    if(successDiv) successDiv.style.display = 'none';
 }
 
 function formatarMoeda(valor) {
-    if (valor === null || valor === undefined) return '0,00';
+    if (valor === null || valor === undefined) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL'
@@ -327,7 +305,6 @@ function formatarMoeda(valor) {
 
 function formatarData(dataString) {
     if (!dataString) return '-';
-    // Adiciona T00:00:00 para evitar problemas de fuso horário
-    const data = new Date(dataString + 'T00:00:00');
+    const data = new Date(dataString + 'T00:00:00'); // Evita problemas de fuso
     return data.toLocaleDateString('pt-BR');
 }

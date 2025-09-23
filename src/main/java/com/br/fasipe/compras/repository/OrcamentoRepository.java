@@ -20,38 +20,33 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     
     @Transactional
     @Modifying
-    // CORREÇÃO APLICADA AQUI: o.produto.id
     @Query("UPDATE Orcamento o SET o.status = 'reprovado' WHERE o.produto.id IN :produtoIds AND o.idOrcamento NOT IN :orcamentoIdsAprovados AND o.status = 'Pendente'")
-    void reprovarConcorrentes(@Param("produtoIds") Set<Long> produtoIds, @Param("orcamentoIdsAprovados") List<Long> orcamentoIdsAprovados);
-    
-    @Query("SELECT o FROM Orcamento o WHERE o.status = 'aprovado' AND o.dataGeracao BETWEEN :dataInicial AND :dataFinal")
-    List<Orcamento> findByStatusAprovadoAndDataGeracaoBetween(@Param("dataInicial") LocalDate dataInicial, @Param("dataFinal") LocalDate dataFinal);
-    
-    // CORREÇÃO APLICADA AQUI: o.fornecedor.id
-    @Query("SELECT o FROM Orcamento o WHERE o.status = 'aprovado' AND o.dataGeracao BETWEEN :dataInicial AND :dataFinal AND o.fornecedor.id = :fornecedorId")
-    List<Orcamento> findByStatusAprovadoAndDataGeracaoBetweenAndFornecedor(@Param("dataInicial") LocalDate dataInicial, @Param("dataFinal") LocalDate dataFinal, @Param("fornecedorId") Long fornecedorId);
-    
-    // CORREÇÃO APLICADA AQUI: o.produto.id
-    @Query("SELECT o FROM Orcamento o WHERE o.status = 'aprovado' AND o.dataGeracao BETWEEN :dataInicial AND :dataFinal AND o.produto.id = :produtoId")
-    List<Orcamento> findByStatusAprovadoAndDataGeracaoBetweenAndProduto(@Param("dataInicial") LocalDate dataInicial, @Param("dataFinal") LocalDate dataFinal, @Param("produtoId") Long produtoId);
-    
-    // CORREÇÃO APLICADA AQUI: o.fornecedor.id e o.produto.id
-    @Query("SELECT o FROM Orcamento o WHERE o.status = 'aprovado' AND o.dataGeracao BETWEEN :dataInicial AND :dataFinal AND o.fornecedor.id = :fornecedorId AND o.produto.id = :produtoId")
-    List<Orcamento> findByStatusAprovadoAndDataGeracaoBetweenAndFornecedorAndProduto(@Param("dataInicial") LocalDate dataInicial, @Param("dataFinal") LocalDate dataFinal, @Param("fornecedorId") Long fornecedorId, @Param("produtoId") Long produtoId);
+    void reprovarConcorrentes(@Param("produtoIds") Set<Integer> produtoIds, @Param("orcamentoIdsAprovados") List<Long> orcamentoIdsAprovados);
 
-    // CORREÇÃO APLICADA AQUI: o.fornecedor.id e o.produto.id
+    /**
+     * NOVA QUERY DE FILTRO - A MAIS IMPORTANTE
+     * Esta query agora lida corretamente com todos os filtros opcionais.
+     */
     @Query("SELECT o from Orcamento o WHERE " +
-           "(:dataInicial IS NULL OR o.dataGeracao >= :dataInicial) AND " +
-           "(:dataFinal IS NULL OR o.dataGeracao <= :dataFinal) AND " +
-           "(:fornecedorId IS NULL OR o.fornecedor.id = :fornecedorId) AND " +
-           "(:produtoId IS NULL OR o.produto.id = :produtoId) AND " +
+           "(:dataInicial IS NULL OR " +
+           "  (o.status = 'aprovado' AND o.dataGeracao >= :dataInicial) OR " +
+           "  (o.status <> 'aprovado' AND o.dataEmissao >= :dataInicial)" +
+           ") AND " +
+           "(:dataFinal IS NULL OR " +
+           "  (o.status = 'aprovado' AND o.dataGeracao <= :dataFinal) OR " +
+           "  (o.status <> 'aprovado' AND o.dataEmissao <= :dataFinal)" +
+           ") AND " +
+           "(:fornecedorNome IS NULL OR o.fornecedor.descricao LIKE %:fornecedorNome%) AND " +
+           "(:produtoNome IS NULL OR o.produto.nome LIKE %:produtoNome%) AND " +
            "(:idOrcamento IS NULL OR o.idOrcamento = :idOrcamento) AND " +
-           "o.status = 'aprovado'")
+           "(:status IS NULL OR o.status = :status)")
     List<Orcamento> findWithFilters(
             @Param("dataInicial") LocalDate dataInicial, 
             @Param("dataFinal") LocalDate dataFinal, 
-            @Param("fornecedorId") Long fornecedorId, 
-            @Param("produtoId") Long produtoId, 
-            @Param("idOrcamento") Long idOrcamento
+            @Param("fornecedorNome") String fornecedorNome, 
+            @Param("produtoNome") String produtoNome, 
+            @Param("idOrcamento") Long idOrcamento,
+            @Param("status") String status
     );
 }
+
