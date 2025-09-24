@@ -130,5 +130,24 @@ public class ControlePedidosController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @GetMapping("/pedidos-agrupados/pdf/{idPedido}")
+    public ResponseEntity<byte[]> gerarPdfPedidoAgrupado(@PathVariable String idPedido) {
+        try {
+            byte[] pdfBytes = ordemDeCompraService.gerarPdfPedidoAgrupado(idPedido);
+
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                return ResponseEntity.notFound().build();
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("inline", "Pedido_" + idPedido + ".pdf");
+            
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }
 

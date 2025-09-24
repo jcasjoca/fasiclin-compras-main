@@ -9,8 +9,7 @@ import com.itextpdf.layout.element.Paragraph;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -79,6 +78,189 @@ public class PdfGenerationService {
             e.printStackTrace();
             return new byte[0]; 
         }
+    }
+
+    /**
+     * Gera PDF para pedido agrupado seguindo o layout específico solicitado
+     */
+    public byte[] gerarPdfPedidoAgrupado(com.br.fasipe.compras.dto.PedidoAgrupadoDTO pedido, 
+                                        List<Orcamento> orcamentos) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(byteArrayOutputStream);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+            
+            // Configurar margens
+            document.setMargins(40, 40, 40, 40);
+            
+            // Título do cabeçalho
+            document.add(new Paragraph("┌─────────────────────────────────────────────────────────────────────────────────┐")
+                .setFontSize(10));
+            document.add(new Paragraph("│                                                                                 │")
+                .setFontSize(10));
+            document.add(new Paragraph(String.format("│  PEDIDO APROVADO Nº: %-50s │", pedido.getIdPedido()))
+                .setFontSize(10));
+            document.add(new Paragraph("│                                                                                 │")
+                .setFontSize(10));
+            
+            // IDs dos orçamentos
+            String orcamentosStr = pedido.getIdOrcamentos().stream()
+                .map(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(", "));
+            document.add(new Paragraph(String.format("│  Orçamento(s) de Origem: %-48s │", orcamentosStr))
+                .setFontSize(10));
+            document.add(new Paragraph("│                                                                                 │")
+                .setFontSize(10));
+            
+            // Informações do fornecedor e status
+            document.add(new Paragraph(String.format("│  Fornecedor:           %-48s │", pedido.getNomeFornecedor()))
+                .setFontSize(10));
+            document.add(new Paragraph(String.format("│  Status:               %-48s │", pedido.getStatus().toUpperCase()))
+                .setFontSize(10));
+            document.add(new Paragraph("│                                                                                 │")
+                .setFontSize(10));
+            document.add(new Paragraph("└─────────────────────────────────────────────────────────────────────────────────┘")
+                .setFontSize(10));
+            
+            // Espaçamento
+            document.add(new Paragraph(" "));
+            
+            // Título da tabela de itens
+            document.add(new Paragraph("ITENS DO PEDIDO:").setFontSize(10));
+            
+            // Cabeçalho da tabela
+            document.add(new Paragraph("┌───────────────┬──────┬────┬────────────────┬──────────────┐")
+                .setFontSize(10));
+            document.add(new Paragraph("│ Produto       │ Qtd. │ Un.│ Valor Unit.    │ Valor Total  │")
+                .setFontSize(10));
+            document.add(new Paragraph("├───────────────┼──────┼────┼────────────────┼──────────────┤")
+                .setFontSize(10));
+            
+            // Itens da tabela - Agrupar produtos iguais
+            Map<String, List<Orcamento>> produtosAgrupados = orcamentos.stream()
+                .collect(java.util.stream.Collectors.groupingBy(o -> o.getProduto().getNome()));
+            
+            double valorTotalGeral = 0.0;
+            
+            for (Map.Entry<String, List<Orcamento>> entry : produtosAgrupados.entrySet()) {
+                String nomeProduto = entry.getKey();
+                List<Orcamento> orcamentosProduto = entry.getValue();
+                
+                // Somar quantidades e valores do mesmo produto
+                int quantidadeTotal = orcamentosProduto.stream()
+                    .mapToInt(Orcamento::getQuantidade)
+                    .sum();
+                
+                double valorUnitario = orcamentosProduto.get(0).getPrecoCompra().doubleValue();
+                double valorTotalProduto = quantidadeTotal * valorUnitario;
+                valorTotalGeral += valorTotalProduto;
+                
+                String unidade = orcamentosProduto.get(0).getUnidadeMedida().getUnidadeAbreviacao();
+                
+                // Formatar linha da tabela
+                String produtoTruncado = nomeProduto.length() > 13 ? 
+                    nomeProduto.substring(0, 13) + "." : nomeProduto;
+                
+                document.add(new Paragraph(String.format("│ %-13s │ %4d │ %2s │ R$ %10.2f │ R$ %9.2f │",
+                    produtoTruncado, quantidadeTotal, unidade, valorUnitario, valorTotalProduto))
+                    .setFontSize(10));
+            }
+            
+            // Linha de fechamento da tabela
+            document.add(new Paragraph("└───────────────┴──────┴────┴────────────────┴──────────────┘")
+                .setFontSize(10));
+            
+            // Total geral
+            document.add(new Paragraph(String.format("                        **TOTAL GERAL: R$ %.2f**", valorTotalGeral))
+                .setFontSize(10));
+            
+            // Espaçamento
+            document.add(new Paragraph(" "));
+            
+            // Condições e prazos
+            document.add(new Paragraph("CONDIÇÕES E PRAZOS:").setFontSize(10));
+            document.add(new Paragraph("───────────────────").setFontSize(10));
+            
+            // Calcular prazo de entrega (menor data)
+            java.time.LocalDate menorDataEntrega = orcamentos.stream()
+                .map(Orcamento::getDataEntrega)
+                .filter(java.util.Objects::nonNull)
+                .min(java.time.LocalDate::compareTo)
+                .orElse(null);
+            
+            if (menorDataEntrega != null) {
+                document.add(new Paragraph(String.format("* Prazo de Entrega: %s", 
+                    menorDataEntrega.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))))
+                    .setFontSize(10));
+            }
+            
+            // Calcular condições de pagamento (prazo mais distante)
+            String condicoesPagamento = orcamentos.stream()
+                .map(Orcamento::getCondicoesPagamento)
+                .filter(java.util.Objects::nonNull)
+                .filter(c -> !c.trim().isEmpty())
+                .max((c1, c2) -> {
+                    // Extrair números das condições para comparar (assumindo formato "X dias")
+                    try {
+                        int dias1 = Integer.parseInt(c1.replaceAll("\\D+", ""));
+                        int dias2 = Integer.parseInt(c2.replaceAll("\\D+", ""));
+                        return Integer.compare(dias1, dias2);
+                    } catch (NumberFormatException e) {
+                        return c1.compareTo(c2);
+                    }
+                })
+                .orElse("Não especificado");
+            
+            document.add(new Paragraph(String.format("* Condições de Pagamento: %s", condicoesPagamento))
+                .setFontSize(10));
+            
+            // Garantias por produto
+            document.add(new Paragraph("* Garantia: ").setFontSize(10));
+            
+            Map<String, Set<String>> garantiasPorProduto = new HashMap<>();
+            for (Orcamento orc : orcamentos) {
+                String produto = orc.getProduto().getNome();
+                String garantia = orc.getGarantia();
+                if (garantia != null && !garantia.trim().isEmpty()) {
+                    if (!garantiasPorProduto.containsKey(produto)) {
+                        garantiasPorProduto.put(produto, new HashSet<>());
+                    }
+                    garantiasPorProduto.get(produto).add(garantia);
+                }
+            }
+            
+            if (garantiasPorProduto.isEmpty()) {
+                document.add(new Paragraph("  Não especificada").setFontSize(10));
+            } else {
+                for (Map.Entry<String, Set<String>> entry : garantiasPorProduto.entrySet()) {
+                    String produto = entry.getKey();
+                    Set<String> garantias = entry.getValue();
+                    for (String garantia : garantias) {
+                        document.add(new Paragraph(String.format("  %s: %s", produto, garantia))
+                            .setFontSize(10));
+                    }
+                }
+            }
+            
+            // Espaçamento
+            document.add(new Paragraph(" "));
+            document.add(new Paragraph("─────────────────────────────────────────────────────────────────────")
+                .setFontSize(10));
+            
+            // Data de geração
+            document.add(new Paragraph(String.format("   Ordem de Compra Gerada: %s %s", 
+                pedido.getDataGeracao().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))))
+                .setFontSize(10));
+            
+            document.close();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
+        return byteArrayOutputStream.toByteArray();
     }
 }
 

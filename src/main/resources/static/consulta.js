@@ -597,15 +597,8 @@ function verDetalhesPedido(idPedido) {
  * Gerar PDF de um pedido agrupado
  */
 function gerarPDFPedido(idPedido) {
-    const pedido = ordensCarregadas.find(p => p.idPedido === idPedido);
-    if (pedido && Array.isArray(pedido.idOrcamentos)) {
-        // Se há múltiplos orçamentos, gerar ZIP com todos os PDFs
-        const orcamentosIds = pedido.idOrcamentos.join(',');
-        window.open(`/api/ordens-de-compra/download?ids=${orcamentosIds}`, '_blank');
-    } else if (pedido && pedido.idOrcamentos) {
-        // Se há apenas um orçamento, gerar PDF direto
-        window.open(`/api/ordens-de-compra/visualizar/${pedido.idOrcamentos}`, '_blank');
-    }
+    // Usar o novo endpoint específico para pedidos agrupados
+    window.open(`/api/pedidos-agrupados/pdf/${idPedido}`, '_blank');
 }
 
 /**

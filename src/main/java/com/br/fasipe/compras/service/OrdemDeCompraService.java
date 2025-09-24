@@ -300,5 +300,28 @@ public class OrdemDeCompraService {
         
         return dto;
     }
+
+    /**
+     * Gera PDF para um pedido agrupado com múltiplos orçamentos
+     */
+    public byte[] gerarPdfPedidoAgrupado(String idPedido) {
+        // Buscar o pedido agrupado específico
+        List<PedidoAgrupadoDTO> pedidos = consultarPedidosAgrupados(null, null, null, null, idPedido, null);
+        
+        if (pedidos.isEmpty()) {
+            return new byte[0];
+        }
+        
+        PedidoAgrupadoDTO pedido = pedidos.get(0);
+        
+        // Buscar todos os orçamentos do pedido
+        List<Orcamento> orcamentos = orcamentoRepository.findAllById(pedido.getIdOrcamentos());
+        
+        if (orcamentos.isEmpty()) {
+            return new byte[0];
+        }
+        
+        return pdfGenerationService.gerarPdfPedidoAgrupado(pedido, orcamentos);
+    }
 }
 
