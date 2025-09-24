@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +101,7 @@ public class OrdemDeCompraService {
     // CORREÇÃO: Adicionados os novos parâmetros valorMinimo e valorMaximo
     public List<OrcamentoDTO> consultarOrdensDeCompra(LocalDate dataInicial, LocalDate dataFinal, 
                                                       String fornecedorNome, String produtoNome, Long idOrcamento, 
-                                                      String status, BigDecimal valorMinimo, BigDecimal valorMaximo) {
+                                                      String status) {
         
         // Limpar status se for vazio, "todos" ou apenas espaços
         if (status != null && (status.trim().isEmpty() || status.trim().equalsIgnoreCase("todos") || status.trim().equals(""))) {
@@ -110,7 +109,7 @@ public class OrdemDeCompraService {
         }
         
         List<Orcamento> orcamentos = orcamentoRepository.findWithFilters(
-            dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status, valorMinimo, valorMaximo);
+            dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status);
             
         return orcamentos.stream()
                 .map(this::convertToDTO)

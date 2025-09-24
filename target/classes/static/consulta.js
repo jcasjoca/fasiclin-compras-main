@@ -13,7 +13,6 @@ const resultsTableBody = document.getElementById('resultsTableBody');
 const resultsCount = document.getElementById('resultsCount');
 const lastUpdate = document.getElementById('lastUpdate');
 const exportPdfBtn = document.getElementById('exportPdfBtn');
-const exportExcelBtn = document.getElementById('exportExcelBtn');
 
 // Campos de filtro
 const filtros = {
@@ -22,17 +21,14 @@ const filtros = {
     dataFim: document.getElementById('dataFim'),
     fornecedor: document.getElementById('fornecedor'),
     produto: document.getElementById('produto'),
-    status: document.getElementById('status'),
-    valorMinimo: document.getElementById('valorMinimo'),
-    valorMaximo: document.getElementById('valorMaximo')
+    status: document.getElementById('status')
 };
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     configurarEventListeners();
-    // Removido: carregarDatasDisponiveis() - usuário preenche livremente
-    // Removido: definirDatasPadrao() - não carregar automaticamente
-    // Removido: consultarOrdens() - usuário deve consultar manualmente
+    // Carregar todas as ordens automaticamente na inicialização
+    consultarOrdens();
 });
 
 function configurarEventListeners() {
@@ -54,9 +50,7 @@ function configurarEventListeners() {
     if (filtros.dataInicio) filtros.dataInicio.addEventListener('change', validarDatas);
     if (filtros.dataFim) filtros.dataFim.addEventListener('change', validarDatas);
     
-    // Validação de valores
-    if (filtros.valorMinimo) filtros.valorMinimo.addEventListener('change', validarValores);
-    if (filtros.valorMaximo) filtros.valorMaximo.addEventListener('change', validarValores);
+
     
     // Validação de ID do pedido
     if (filtros.idPedido) {
@@ -66,7 +60,6 @@ function configurarEventListeners() {
 
     // Export handlers
     exportPdfBtn.addEventListener('click', () => exportarDados('pdf'));
-    exportExcelBtn.addEventListener('click', () => exportarDados('excel'));
 }
 
 
@@ -98,25 +91,7 @@ function validarDatas() {
     return true;
 }
 
-/**
- * Valida os valores mínimo e máximo
- */
-function validarValores() {
-    const valorMinimo = parseFloat(filtros.valorMinimo.value);
-    const valorMaximo = parseFloat(filtros.valorMaximo.value);
-    
-    if (!isNaN(valorMinimo) && !isNaN(valorMaximo) && valorMinimo > valorMaximo) {
-        showError('O valor mínimo não pode ser maior que o valor máximo.');
-        filtros.valorMinimo.style.borderColor = '#e74c3c';
-        filtros.valorMaximo.style.borderColor = '#e74c3c';
-        return false;
-    } else {
-        filtros.valorMinimo.style.borderColor = '#d9d9d9';
-        filtros.valorMaximo.style.borderColor = '#d9d9d9';
-        hideError();
-        return true;
-    }
-}
+
 
 /**
  * Valida o ID do pedido
@@ -146,9 +121,6 @@ function validarTodosFiltros() {
     
     // Validar datas
     if (!validarDatas()) valido = false;
-    
-    // Validar valores
-    if (!validarValores()) valido = false;
     
     // Validar ID do pedido
     if (!validarIdPedido()) valido = false;
@@ -205,28 +177,13 @@ async function consultarOrdens() {
         if (filtros.status.value && filtros.status.value.trim() !== '') {
             params.append('status', filtros.status.value.trim());
         }
-        
-        if (filtros.valorMinimo.value && filtros.valorMinimo.value.trim() !== '') {
-            const valorNum = parseFloat(filtros.valorMinimo.value.trim());
-            if (!isNaN(valorNum) && valorNum >= 0) {
-                params.append('valorMinimo', valorNum.toString());
-            }
-        }
-        
-        if (filtros.valorMaximo.value && filtros.valorMaximo.value.trim() !== '') {
-            const valorNum = parseFloat(filtros.valorMaximo.value.trim());
-            if (!isNaN(valorNum) && valorNum >= 0) {
-                params.append('valorMaximo', valorNum.toString());
-            }
-        }
 
         const url = `/api/ordens-de-compra${params.toString() ? '?' + params.toString() : ''}`;
         
         const response = await fetch(url, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa('admin:admin')
+                'Content-Type': 'application/json'
             }
         });
 
@@ -245,6 +202,7 @@ async function consultarOrdens() {
             throw new Error('Formato de resposta inválido');
         }
 
+        console.log('Ordens recebidas:', ordens);
         // Backend já faz a filtragem, não precisamos filtrar localmente
         ordensCarregadas = ordens;
         exibirResultados(ordens);
@@ -342,26 +300,34 @@ function exibirResultados(ordens) {
     
     ordens.forEach(ordem => {
         const tr = document.createElement('tr');
+        
+        // ID do Pedido - só existe se o orçamento foi aprovado (tem dataGeracao)
+        const idPedido = (ordem.status === 'Aprovado' || ordem.status === 'APROVADO') ? `PED-${ordem.idOrcamento}` : '-';
+        
         tr.innerHTML = `
+            <td>${idPedido}</td>
             <td>${ordem.idOrcamento}</td>
-            <td class="date-column">${formatarData(ordem.dataEmissao)}</td>
             <td>
                 <strong>${ordem.nomeFornecedor}</strong><br>
                 <small>${ordem.descricaoFornecedor || ''}</small>
             </td>
-            <td>
-                <strong>${ordem.nomeProduto}</strong><br>
-                <small>${ordem.descricaoProduto || ''}</small>
-            </td>
-            <td>${ordem.quantidade} ${ordem.unidadeAbreviacao}</td>
-            <td class="currency">R$ ${formatarMoeda(ordem.precoCompra)}</td>
+            <td class="date-column">${formatarData(ordem.dataEmissao)}</td>
             <td class="currency">R$ ${formatarMoeda(ordem.valorTotal)}</td>
             <td>
                 <span class="status-badge status-${ordem.status}">
                     ${traduzirStatus(ordem.status)}
                 </span>
             </td>
-            <td>${ordem.observacoes || '-'}</td>
+            <td>
+                <button type="button" class="btn-action btn-detail" onclick="verDetalhes(${ordem.idOrcamento})" title="Ver Detalhes">
+                    👁️ Ver
+                </button>
+                ${(ordem.status === 'Aprovado' || ordem.status === 'APROVADO') ? 
+                    `<button type="button" class="btn-action btn-pdf" onclick="gerarPDF(${ordem.idOrcamento})" title="Gerar PDF">
+                        📄 PDF
+                    </button>` : ''
+                }
+            </td>
         `;
         resultsTableBody.appendChild(tr);
     });
@@ -409,8 +375,6 @@ function exportarDados(formato) {
     try {
         if (formato === 'pdf') {
             exportarPDF();
-        } else if (formato === 'excel') {
-            exportarExcel();
         }
     } catch (error) {
         console.error('Erro na exportação:', error);
@@ -432,43 +396,7 @@ function exportarPDF() {
     janelaImpressao.print();
 }
 
-/**
- * Exporta para Excel (CSV)
- */
-function exportarExcel() {
-    const headers = [
-        'ID', 'Data', 'Fornecedor', 'Razão Social', 'Produto', 
-        'Descrição', 'Quantidade', 'Unidade', 'Valor Unitário', 
-        'Valor Total', 'Status', 'Observações'
-    ];
-    
-    let csvContent = headers.join(',') + '\n';
-    
-    ordensCarregadas.forEach(ordem => {
-        const row = [
-            ordem.idOrcamento,
-            formatarData(ordem.dataEmissao),
-            `"${ordem.nomeFornecedor}"`,
-            `"${ordem.descricaoFornecedor || ''}"`,
-            `"${ordem.nomeProduto}"`,
-            `"${ordem.descricaoProduto || ''}"`,
-            ordem.quantidade,
-            ordem.unidadeAbreviacao,
-            ordem.precoCompra.toString().replace('.', ','),
-            ordem.valorTotal.toString().replace('.', ','),
-            traduzirStatus(ordem.status),
-            `"${ordem.observacoes || ''}"`
-        ];
-        csvContent += row.join(',') + '\n';
-    });
-    
-    // Download do arquivo
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `ordens-compra-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-}
+
 
 /**
  * Cria conteúdo HTML para impressão
@@ -591,7 +519,6 @@ function hideError() {
 
 function habilitarExportacao(habilitar) {
     exportPdfBtn.disabled = !habilitar;
-    exportExcelBtn.disabled = !habilitar;
 }
 
 function formatarMoeda(valor) {
@@ -605,7 +532,9 @@ function formatarMoeda(valor) {
 
 function formatarData(dataString) {
     if (!dataString) return '-';
-    const data = new Date(dataString);
+    // Evitar problema de fuso horário tratando como data local
+    const [ano, mes, dia] = dataString.split('T')[0].split('-');
+    const data = new Date(ano, mes - 1, dia); // mes - 1 porque o mês no JS é 0-indexed
     return data.toLocaleDateString('pt-BR');
 }
 
@@ -617,4 +546,30 @@ function traduzirStatus(status) {
         'REJEITADO': 'Reprovado' // Compatibilidade
     };
     return traducoes[status] || status;
+}
+
+/**
+ * Ver detalhes de um orçamento
+ */
+function verDetalhes(idOrcamento) {
+    const ordem = ordensCarregadas.find(o => o.idOrcamento === idOrcamento);
+    if (ordem) {
+        alert(`Detalhes do Orçamento ${idOrcamento}:\n\n` +
+              `Fornecedor: ${ordem.nomeFornecedor}\n` +
+              `Produto: ${ordem.nomeProduto}\n` +
+              `Quantidade: ${ordem.quantidade} ${ordem.unidadeAbreviacao}\n` +
+              `Valor Unitário: R$ ${formatarMoeda(ordem.precoCompra)}\n` +
+              `Valor Total: R$ ${formatarMoeda(ordem.valorTotal)}\n` +
+              `Status: ${traduzirStatus(ordem.status)}\n` +
+              `Data de Emissão: ${formatarData(ordem.dataEmissao)}\n` +
+              `Garantia: ${ordem.garantia || 'N/A'}\n` +
+              `Condições de Pagamento: ${ordem.condicoesPagamento || 'N/A'}`);
+    }
+}
+
+/**
+ * Gerar PDF de um orçamento específico
+ */
+function gerarPDF(idOrcamento) {
+    window.open(`/api/ordens-de-compra/visualizar/${idOrcamento}`, '_blank');
 }

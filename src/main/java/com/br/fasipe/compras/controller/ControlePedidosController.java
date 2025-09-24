@@ -9,7 +9,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -51,9 +50,7 @@ public class ControlePedidosController {
             @RequestParam(required = false) String fornecedorNome,
             @RequestParam(required = false) String produtoNome,
             @RequestParam(required = false) Long idOrcamento,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) BigDecimal valorMinimo,
-            @RequestParam(required = false) BigDecimal valorMaximo) { 
+            @RequestParam(required = false) String status) { 
         
         try {
             if (dataInicial != null && dataFinal != null && dataInicial.isAfter(dataFinal)) {
@@ -61,7 +58,7 @@ public class ControlePedidosController {
             }
             
             List<OrcamentoDTO> orcamentos = ordemDeCompraService.consultarOrdensDeCompra(
-                dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status, valorMinimo, valorMaximo);
+                dataInicial, dataFinal, fornecedorNome, produtoNome, idOrcamento, status);
                 
             return ResponseEntity.ok(orcamentos);
             

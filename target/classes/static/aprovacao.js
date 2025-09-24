@@ -35,8 +35,7 @@ async function carregarOrcamentos() {
         const response = await fetch('/api/orcamentos/pendentes', {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa('admin:admin')
+                'Content-Type': 'application/json'
             }
         });
 
@@ -50,6 +49,7 @@ async function carregarOrcamentos() {
             throw new Error('Formato de resposta inválido');
         }
 
+        console.log('Orçamentos recebidos:', orcamentos);
         processarOrcamentos(orcamentos);
         
     } catch (error) {
@@ -72,7 +72,7 @@ function processarOrcamentos(orcamentos) {
     // Agrupar por produto
     orcamentosPorProduto = {};
     orcamentos.forEach(orcamento => {
-        const produtoId = orcamento.idProduto; // Usar idProduto em vez de orcamento.produto.id
+        const produtoId = orcamento.idProduto;
         if (!orcamentosPorProduto[produtoId]) {
             orcamentosPorProduto[produtoId] = {
                 produto: {
@@ -91,7 +91,7 @@ function processarOrcamentos(orcamentos) {
 
     // Ordenar orçamentos de cada produto por preço
     Object.values(orcamentosPorProduto).forEach(grupo => {
-        grupo.orcamentos.sort((a, b) => a.precoCompra - b.precoCompra); // Usar precoCompra em vez de valorUnitario
+        grupo.orcamentos.sort((a, b) => parseFloat(a.precoCompra.toString().replace(',', '.')) - parseFloat(b.precoCompra.toString().replace(',', '.')));
     });
 
     renderizarOrcamentos();
@@ -132,6 +132,12 @@ function renderizarOrcamentos() {
 function criarHtmlProduto(grupo) {
     const produto = grupo.produto;
     const orcamentos = grupo.orcamentos;
+
+    // Verificação de segurança para evitar o erro "Cannot read properties of undefined"
+    if (!produto || produto.id === undefined) {
+        console.error('Produto inválido:', produto);
+        return '<div class="error">Erro: Produto inválido</div>';
+    }
 
     let html = `
         <div class="produto-header">
@@ -281,8 +287,7 @@ async function gerarOrdensDeCompra() {
         const response = await fetch('/api/ordens-de-compra/gerar', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa('admin:admin')
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(orcamentoIds)
         });
@@ -376,13 +381,18 @@ function hideMessages() {
 }
 
 function formatarMoeda(valor) {
+    // Converter string com vírgula para número
+    let numeroValor = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : valor;
     return new Intl.NumberFormat('pt-BR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(valor);
+    }).format(numeroValor);
 }
 
 function formatarData(dataString) {
-    const data = new Date(dataString);
+    if (!dataString) return '-';
+    // Evitar problema de fuso horário tratando como data local
+    const [ano, mes, dia] = dataString.split('T')[0].split('-');
+    const data = new Date(ano, mes - 1, dia); // mes - 1 porque o mês no JS é 0-indexed
     return data.toLocaleDateString('pt-BR');
 }
