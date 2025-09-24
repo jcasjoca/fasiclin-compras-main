@@ -72,10 +72,17 @@ function processarOrcamentos(orcamentos) {
     // Agrupar por produto
     orcamentosPorProduto = {};
     orcamentos.forEach(orcamento => {
-        const produtoId = orcamento.produto.id;
+        const produtoId = orcamento.idProduto; // Usar idProduto em vez de orcamento.produto.id
         if (!orcamentosPorProduto[produtoId]) {
             orcamentosPorProduto[produtoId] = {
-                produto: orcamento.produto,
+                produto: {
+                    id: orcamento.idProduto,
+                    nome: orcamento.nomeProduto,
+                    descricao: orcamento.descricaoProduto,
+                    unimedida: {
+                        sigla: orcamento.unidadeAbreviacao
+                    }
+                },
                 orcamentos: []
             };
         }
@@ -84,7 +91,7 @@ function processarOrcamentos(orcamentos) {
 
     // Ordenar orçamentos de cada produto por preço
     Object.values(orcamentosPorProduto).forEach(grupo => {
-        grupo.orcamentos.sort((a, b) => a.valorUnitario - b.valorUnitario);
+        grupo.orcamentos.sort((a, b) => a.precoCompra - b.precoCompra); // Usar precoCompra em vez de valorUnitario
     });
 
     renderizarOrcamentos();
@@ -138,43 +145,55 @@ function criarHtmlProduto(grupo) {
             <thead>
                 <tr>
                     <th class="radio-column">Selecionar</th>
+                    <th>ID do Produto</th>
                     <th>Fornecedor</th>
                     <th>Valor Unitário</th>
+                    <th>Quantidade</th>
                     <th>Valor Total</th>
-                    <th class="date-column">Data da Cotação</th>
-                    <th>Observações</th>
+                    <th class="date-column">Data da Entrega</th>
+                    <th>Condições de Pagamento</th>
+                    <th>Garantia</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     orcamentos.forEach((orcamento, index) => {
-        const isChecked = selecoes[produto.id] === orcamento.id.toString();
+        const isChecked = selecoes[produto.id] === orcamento.idOrcamento.toString();
         const rowClass = isChecked ? 'selected' : '';
         
         html += `
-            <tr class="${rowClass}" data-orcamento-id="${orcamento.id}">
+            <tr class="${rowClass}" data-orcamento-id="${orcamento.idOrcamento}">
                 <td class="radio-column">
                     <input type="radio" 
                            name="produto_${produto.id}" 
-                           value="${orcamento.id}"
+                           value="${orcamento.idOrcamento}"
                            ${isChecked ? 'checked' : ''}>
                 </td>
                 <td>
-                    <strong>${orcamento.fornecedor.nomeFantasia}</strong><br>
-                    <small>${orcamento.fornecedor.razaoSocial}</small>
+                    ${orcamento.idProduto}
+                </td>
+                <td>
+                    <strong>${orcamento.nomeFornecedor}</strong><br>
+                    <small>${orcamento.representante || ''}</small>
                 </td>
                 <td class="currency">
-                    R$ ${formatarMoeda(orcamento.valorUnitario)}
+                    R$ ${formatarMoeda(orcamento.precoCompra)}
+                </td>
+                <td>
+                    ${orcamento.quantidade}
                 </td>
                 <td class="currency">
                     R$ ${formatarMoeda(orcamento.valorTotal)}
                 </td>
                 <td class="date-column">
-                    ${formatarData(orcamento.dataCotacao)}
+                    ${formatarData(orcamento.dataEntrega)}
                 </td>
                 <td>
-                    ${orcamento.observacoes || '-'}
+                    ${orcamento.condicoesPagamento || '-'}
+                </td>
+                <td>
+                    ${orcamento.garantia || '-'}
                 </td>
             </tr>
         `;
@@ -213,12 +232,14 @@ function atualizarBotaoGerar() {
     const totalProdutos = Object.keys(orcamentosPorProduto).length;
     const totalSelecionados = Object.keys(selecoes).length;
     
-    gerarOcBtn.disabled = totalSelecionados < totalProdutos;
+    // Permitir gerar se pelo menos um orçamento estiver selecionado
+    gerarOcBtn.disabled = totalSelecionados === 0;
     
-    if (totalSelecionados === totalProdutos) {
-        gerarOcBtn.textContent = `Gerar ${totalSelecionados} Ordem${totalSelecionados > 1 ? 's' : ''} de Compra`;
+    if (totalSelecionados > 1) {
+        gerarOcBtn.textContent = `Gerar ${totalSelecionados} Ordens de Compra`;
     } else {
-        gerarOcBtn.textContent = 'Gerar Ordens de Compra';
+        // Para 0 ou 1 selecionado, sempre singular
+        gerarOcBtn.textContent = 'Gerar Ordem de Compra';
     }
 }
 
@@ -245,7 +266,14 @@ async function gerarOrdensDeCompra() {
     try {
         loading = true;
         gerarOcBtn.disabled = true;
-        gerarOcBtn.textContent = 'Gerando Ordens...';
+        
+        const totalSelecionados = Object.keys(selecoes).length;
+        if (totalSelecionados > 1) {
+            gerarOcBtn.textContent = 'Gerando Ordens...';
+        } else {
+            gerarOcBtn.textContent = 'Gerando Ordem...';
+        }
+        
         hideMessages();
 
         const orcamentoIds = Object.values(selecoes).map(id => parseInt(id));
@@ -277,7 +305,11 @@ async function gerarOrdensDeCompra() {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
 
-            showSuccess('Ordens de compra geradas com sucesso! O download foi iniciado automaticamente.');
+            if (totalSelecionados > 1) {
+                showSuccess('Ordens de compra geradas com sucesso! O download foi iniciado automaticamente.');
+            } else {
+                showSuccess('Ordem de compra gerada com sucesso! O download foi iniciado automaticamente.');
+            }
             
             // Recarregar os orçamentos após sucesso
             setTimeout(() => {
@@ -286,12 +318,20 @@ async function gerarOrdensDeCompra() {
             }, 2000);
         } else {
             const result = await response.json();
-            showSuccess('Ordens de compra geradas: ' + JSON.stringify(result));
+            if (totalSelecionados > 1) {
+                showSuccess('Ordens de compra geradas: ' + JSON.stringify(result));
+            } else {
+                showSuccess('Ordem de compra gerada: ' + JSON.stringify(result));
+            }
         }
 
     } catch (error) {
         console.error('Erro ao gerar ordens de compra:', error);
-        showError('Erro ao gerar ordens de compra: ' + error.message);
+        if (totalSelecionados > 1) {
+            showError('Erro ao gerar ordens de compra: ' + error.message);
+        } else {
+            showError('Erro ao gerar ordem de compra: ' + error.message);
+        }
     } finally {
         loading = false;
         atualizarBotaoGerar();
