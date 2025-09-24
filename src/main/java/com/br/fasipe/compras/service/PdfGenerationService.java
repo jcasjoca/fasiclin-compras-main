@@ -137,34 +137,50 @@ public class PdfGenerationService {
             document.add(new Paragraph("├───────────────┼──────┼────┼────────────────┼──────────────┤")
                 .setFontSize(10));
             
-            // Itens da tabela - Agrupar produtos iguais
+            // CORREÇÃO: Agrupar produtos por nome E preço unitário (produtos iguais com preços diferentes ficam separados)
             Map<String, List<Orcamento>> produtosAgrupados = orcamentos.stream()
-                .collect(java.util.stream.Collectors.groupingBy(o -> o.getProduto().getNome()));
+                .collect(java.util.stream.Collectors.groupingBy(o -> 
+                    o.getProduto().getNome() + "_" + o.getPrecoCompra().toString()));
             
             double valorTotalGeral = 0.0;
             
+            // Reorganizar para exibir por nome do produto, mas mantendo preços diferentes separados
+            Map<String, List<Map.Entry<String, List<Orcamento>>>> produtosPorNome = new LinkedHashMap<>();
             for (Map.Entry<String, List<Orcamento>> entry : produtosAgrupados.entrySet()) {
-                String nomeProduto = entry.getKey();
-                List<Orcamento> orcamentosProduto = entry.getValue();
+                String chave = entry.getKey();
+                String nomeProduto = chave.substring(0, chave.lastIndexOf("_"));
+                if (!produtosPorNome.containsKey(nomeProduto)) {
+                    produtosPorNome.put(nomeProduto, new ArrayList<>());
+                }
+                produtosPorNome.get(nomeProduto).add(entry);
+            }
+            
+            for (Map.Entry<String, List<Map.Entry<String, List<Orcamento>>>> produtoEntry : produtosPorNome.entrySet()) {
+                String nomeProduto = produtoEntry.getKey();
+                List<Map.Entry<String, List<Orcamento>>> variacoes = produtoEntry.getValue();
                 
-                // Somar quantidades e valores do mesmo produto
-                int quantidadeTotal = orcamentosProduto.stream()
-                    .mapToInt(Orcamento::getQuantidade)
-                    .sum();
-                
-                double valorUnitario = orcamentosProduto.get(0).getPrecoCompra().doubleValue();
-                double valorTotalProduto = quantidadeTotal * valorUnitario;
-                valorTotalGeral += valorTotalProduto;
-                
-                String unidade = orcamentosProduto.get(0).getUnidadeMedida().getUnidadeAbreviacao();
-                
-                // Formatar linha da tabela
-                String produtoTruncado = nomeProduto.length() > 13 ? 
-                    nomeProduto.substring(0, 13) + "." : nomeProduto;
-                
-                document.add(new Paragraph(String.format("│ %-13s │ %4d │ %2s │ R$ %10.2f │ R$ %9.2f │",
-                    produtoTruncado, quantidadeTotal, unidade, valorUnitario, valorTotalProduto))
-                    .setFontSize(10));
+                for (Map.Entry<String, List<Orcamento>> variacao : variacoes) {
+                    List<Orcamento> orcamentosProduto = variacao.getValue();
+                    
+                    // Somar quantidades dos orçamentos com mesmo produto e mesmo preço
+                    int quantidadeTotal = orcamentosProduto.stream()
+                        .mapToInt(Orcamento::getQuantidade)
+                        .sum();
+                    
+                    double valorUnitario = orcamentosProduto.get(0).getPrecoCompra().doubleValue();
+                    double valorTotalProduto = quantidadeTotal * valorUnitario;
+                    valorTotalGeral += valorTotalProduto;
+                    
+                    String unidade = orcamentosProduto.get(0).getUnidadeMedida().getUnidadeAbreviacao();
+                    
+                    // Formatar linha da tabela
+                    String produtoTruncado = nomeProduto.length() > 13 ? 
+                        nomeProduto.substring(0, 13) + "." : nomeProduto;
+                    
+                    document.add(new Paragraph(String.format("│ %-13s │ %4d │ %2s │ R$ %10.2f │ R$ %9.2f │",
+                        produtoTruncado, quantidadeTotal, unidade, valorUnitario, valorTotalProduto))
+                        .setFontSize(10));
+                }
             }
             
             // Linha de fechamento da tabela
@@ -248,9 +264,9 @@ public class PdfGenerationService {
             document.add(new Paragraph("─────────────────────────────────────────────────────────────────────")
                 .setFontSize(10));
             
-            // Data de geração
+            // CORREÇÃO: Data de aprovação (data atual quando o PDF é gerado)
             document.add(new Paragraph(String.format("   Ordem de Compra Gerada: %s %s", 
-                pedido.getDataGeracao().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")),
                 java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))))
                 .setFontSize(10));
             
