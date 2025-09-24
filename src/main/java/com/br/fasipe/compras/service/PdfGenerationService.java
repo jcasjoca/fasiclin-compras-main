@@ -116,7 +116,7 @@ public class PdfGenerationService {
             // Informações do fornecedor e status
             document.add(new Paragraph(String.format("│  Fornecedor:           %-48s │", pedido.getNomeFornecedor()))
                 .setFontSize(10));
-            document.add(new Paragraph(String.format("│  Status:               %-48s │", pedido.getStatus().toUpperCase()))
+            document.add(new Paragraph(String.format("│  Status:               %-48s │", pedido.getStatus()))
                 .setFontSize(10));
             document.add(new Paragraph("│                                                                                 │")
                 .setFontSize(10));
