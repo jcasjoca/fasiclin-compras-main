@@ -340,6 +340,20 @@ body {
     color: white;
 }
 
+/* Checkboxes */
+.pedido-checkbox,
+#selectAllCheckbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    margin: 0;
+    accent-color: #335e9e;
+}
+
+#selectAllCheckbox {
+    transform: scale(1.1);
+}
+
 /* Botões de ação */
 .btn-action {
     padding: 6px 12px;
@@ -368,7 +382,7 @@ body {
 }
 
 .btn-pdf {
-    background-color: #e67e22;
+    background-color: #ee0505;
     color: white;
 }
 

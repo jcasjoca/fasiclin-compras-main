@@ -59,10 +59,111 @@ function configurarEventListeners() {
     }
 
     // Export handlers
-    exportPdfBtn.addEventListener('click', () => exportarDados('pdf'));
+    exportPdfBtn.addEventListener('click', () => exportarPDFsSelecionados());
+    
+    // Checkbox "Selecionar Todos"
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', toggleSelecionarTodos);
+    }
 }
 
+/**
+ * Função para marcar/desmarcar todas as checkboxes de pedidos aprovados
+ */
+function toggleSelecionarTodos() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.pedido-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    
+    atualizarSelecao();
+}
 
+/**
+ * Atualiza o estado da checkbox "Selecionar Todos" e do botão exportar
+ */
+function atualizarSelecao() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.pedido-checkbox');
+    const checkboxesMarcadas = document.querySelectorAll('.pedido-checkbox:checked');
+    
+    // Atualizar estado da checkbox "Selecionar Todos"
+    if (checkboxesMarcadas.length === 0) {
+        selectAllCheckbox.indeterminate = false;
+        selectAllCheckbox.checked = false;
+    } else if (checkboxesMarcadas.length === checkboxes.length) {
+        selectAllCheckbox.indeterminate = false;
+        selectAllCheckbox.checked = true;
+    } else {
+        selectAllCheckbox.indeterminate = true;
+        selectAllCheckbox.checked = false;
+    }
+    
+    // Habilitar/desabilitar botão de exportar
+    exportPdfBtn.disabled = checkboxesMarcadas.length === 0;
+}
+
+/**
+ * Exporta PDFs dos pedidos selecionados
+ */
+function exportarPDFsSelecionados() {
+    const checkboxesMarcadas = document.querySelectorAll('.pedido-checkbox:checked');
+    
+    if (checkboxesMarcadas.length === 0) {
+        showError('Selecione pelo menos um pedido para exportar.');
+        return;
+    }
+    
+    const idsPedidos = Array.from(checkboxesMarcadas).map(cb => cb.value);
+    
+    if (idsPedidos.length === 1) {
+        // Um único PDF - abrir diretamente
+        window.open(`/api/pedidos-agrupados/pdf/${idsPedidos[0]}`, '_blank');
+    } else {
+        // Múltiplos PDFs - baixar em sequência
+        baixarMultiplosPDFs(idsPedidos);
+    }
+}
+
+/**
+ * Baixa múltiplos PDFs em sequência
+ */
+function baixarMultiplosPDFs(idsPedidos) {
+    let contador = 0;
+    const total = idsPedidos.length;
+    
+    // Mostrar progresso
+    const mensagemOriginal = exportPdfBtn.textContent;
+    exportPdfBtn.disabled = true;
+    
+    function baixarProximo() {
+        if (contador >= total) {
+            exportPdfBtn.textContent = mensagemOriginal;
+            exportPdfBtn.disabled = false;
+            return;
+        }
+        
+        const idPedido = idsPedidos[contador];
+        exportPdfBtn.textContent = `Baixando ${contador + 1}/${total}...`;
+        
+        // Criar link de download temporário
+        const link = document.createElement('a');
+        link.href = `/api/pedidos-agrupados/pdf/${idPedido}`;
+        link.download = `Pedido_${idPedido}.pdf`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        contador++;
+        setTimeout(baixarProximo, 1000); // Aguardar 1 segundo entre downloads
+    }
+    
+    baixarProximo();
+}
 
 /**
  * Valida as datas de início e fim
@@ -325,7 +426,14 @@ function exibirResultados(pedidosAgrupados) {
         const tr = document.createElement('tr');
         
         // Usar os novos dados do sistema de pedidos agrupados
+        const isAprovado = (pedido.status === 'Aprovado' || pedido.status === 'APROVADO');
         tr.innerHTML = `
+            <td>
+                ${isAprovado ? 
+                    `<input type="checkbox" class="pedido-checkbox" value="${pedido.idPedido}" onchange="atualizarSelecao()">` : 
+                    '<span style="width: 16px; display: inline-block;"></span>'
+                }
+            </td>
             <td><strong>${pedido.idPedido}</strong></td>
             <td>${Array.isArray(pedido.idOrcamentos) ? pedido.idOrcamentos.join(', ') : pedido.idOrcamentos}</td>
             <td>${Array.isArray(pedido.nomesProdutos) ? pedido.nomesProdutos.join(', ') : (pedido.nomesProdutos || 'N/A')}</td>
@@ -338,13 +446,11 @@ function exibirResultados(pedidosAgrupados) {
                 </span>
             </td>
             <td>
-                <button type="button" class="btn-action btn-detail" onclick="verDetalhesPedido('${pedido.idPedido}')" title="Ver Detalhes">
-                    👁️ Ver
-                </button>
-                ${(pedido.status === 'Aprovado' || pedido.status === 'APROVADO') ? 
+                ${isAprovado ? 
                     `<button type="button" class="btn-action btn-pdf" onclick="gerarPDFPedido('${pedido.idPedido}')" title="Gerar PDF">
                         📄 PDF
-                    </button>` : ''
+                    </button>` : 
+                    '<span style="color: #999;">Não disponível</span>'
                 }
             </td>
         `;
@@ -368,6 +474,9 @@ function exibirResultados(pedidosAgrupados) {
     
     mostrarResultados();
     habilitarExportacao(true);
+    
+    // Inicializar estado das checkboxes
+    atualizarSelecao();
 }
 
 /**
