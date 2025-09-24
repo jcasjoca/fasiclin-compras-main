@@ -223,12 +223,45 @@ public class OrdemDeCompraService {
                 .collect(Collectors.toList());
         }
         
+        // Ordenação: 1º por Status (Aprovado → Pendente → Reprovado), 2º por Data (mais recente primeiro)
+        pedidosAgrupados.sort((p1, p2) -> {
+            // Definir prioridade dos status
+            int prioridadeP1 = obterPrioridadeStatus(p1.getStatus());
+            int prioridadeP2 = obterPrioridadeStatus(p2.getStatus());
+            
+            // Primeiro critério: Status
+            int comparacaoStatus = Integer.compare(prioridadeP1, prioridadeP2);
+            if (comparacaoStatus != 0) {
+                return comparacaoStatus;
+            }
+            
+            // Segundo critério: Data mais recente primeiro (ordem decrescente)
+            LocalDate dataP1 = p1.getDataEmissaoFim(); // Usar data fim para pegar a mais recente do grupo
+            LocalDate dataP2 = p2.getDataEmissaoFim();
+            return dataP2.compareTo(dataP1); // Ordem decrescente (mais recente primeiro)
+        });
+        
         return pedidosAgrupados;
     }
     
     private Usuario obterUsuarioPadrao() {
         return usuarioRepository.findById(11L)
                 .orElseThrow(() -> new RuntimeException("Usuário padrão (ID=11) não encontrado no banco de dados"));
+    }
+    
+    private int obterPrioridadeStatus(String status) {
+        if (status == null) return 999; // Status nulo vai para o final
+        
+        switch (status.toLowerCase()) {
+            case "aprovado":
+                return 1; // Primeira prioridade
+            case "pendente":
+                return 2; // Segunda prioridade  
+            case "reprovado":
+                return 3; // Terceira prioridade
+            default:
+                return 999; // Status desconhecido vai para o final
+        }
     }
     
     private OrcamentoDTO convertToDTO(Orcamento orcamento) {

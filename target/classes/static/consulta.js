@@ -328,6 +328,7 @@ function exibirResultados(pedidosAgrupados) {
         tr.innerHTML = `
             <td><strong>${pedido.idPedido}</strong></td>
             <td>${Array.isArray(pedido.idOrcamentos) ? pedido.idOrcamentos.join(', ') : pedido.idOrcamentos}</td>
+            <td>${Array.isArray(pedido.nomesProdutos) ? pedido.nomesProdutos.join(', ') : (pedido.nomesProdutos || 'N/A')}</td>
             <td><strong>${pedido.nomeFornecedor}</strong></td>
             <td class="date-column">${pedido.rangeDataEmissao}</td>
             <td class="currency">R$ ${formatarMoeda(pedido.valorTotal)}</td>
