@@ -38,27 +38,40 @@ public class OrdemDeCompraService {
 
     @Transactional
     public void processarStatus(List<Long> orcamentoIdsAprovados) {
+        System.out.println("=== DEBUG: Processando orçamentos ===");
+        System.out.println("IDs recebidos para aprovação: " + orcamentoIdsAprovados);
+        
         if (orcamentoIdsAprovados == null || orcamentoIdsAprovados.isEmpty()) {
+            System.out.println("Lista vazia, retornando...");
             return;
         }
         Usuario usuarioPadrao = obterUsuarioPadrao();
         List<Orcamento> orcamentosAprovados = orcamentoRepository.findAllById(orcamentoIdsAprovados);
+        System.out.println("Orçamentos encontrados no DB: " + orcamentosAprovados.size());
+        
         if (orcamentosAprovados.isEmpty()) {
+            System.out.println("Nenhum orçamento encontrado no banco, retornando...");
             return;
         }
+        
         Set<Integer> produtoIds = orcamentosAprovados.stream()
                 .map(orcamento -> orcamento.getProduto().getId())
                 .collect(Collectors.toSet());
+        System.out.println("Produtos dos orçamentos aprovados: " + produtoIds);
+        
         if (!produtoIds.isEmpty()) {
+             System.out.println("Reprovando concorrentes dos produtos: " + produtoIds + " exceto IDs: " + orcamentoIdsAprovados);
              orcamentoRepository.reprovarConcorrentes(produtoIds, orcamentoIdsAprovados);
         }
         LocalDate agora = LocalDate.now();
         for (Orcamento orcamento : orcamentosAprovados) {
+            System.out.println("Aprovando orçamento ID: " + orcamento.getIdOrcamento() + " do produto ID: " + orcamento.getProduto().getId());
             orcamento.setStatus("aprovado");
             orcamento.setDataGeracao(agora);
             orcamento.setUsuarioAprovador(usuarioPadrao);
         }
         orcamentoRepository.saveAll(orcamentosAprovados);
+        System.out.println("=== FIM DEBUG ===");
     }
     
     public byte[] gerarPdfUnicoPorId(Long orcamentoId) {

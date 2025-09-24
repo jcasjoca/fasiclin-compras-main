@@ -283,8 +283,10 @@ async function gerarOrdensDeCompra() {
         hideMessages();
 
         const orcamentoIds = Object.values(selecoes).map(id => parseInt(id));
+        console.log('Orçamentos selecionados para processar:', orcamentoIds);
+        console.log('Seleções completas:', selecoes);
 
-        const response = await fetch('/api/ordens-de-compra/gerar', {
+        const response = await fetch('/api/ordens-de-compra/processar', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -296,39 +298,20 @@ async function gerarOrdensDeCompra() {
             throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
         }
 
-        // Verificar se a resposta é um arquivo ZIP
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/zip')) {
-            // Download do arquivo ZIP
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'ordens-de-compra.zip';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-
-            if (totalSelecionados > 1) {
-                showSuccess('Ordens de compra geradas com sucesso! O download foi iniciado automaticamente.');
-            } else {
-                showSuccess('Ordem de compra gerada com sucesso! O download foi iniciado automaticamente.');
-            }
-            
-            // Recarregar os orçamentos após sucesso
-            setTimeout(() => {
-                carregarOrcamentos();
-                selecoes = {};
-            }, 2000);
+        // O endpoint /processar retorna JSON com mensagem de sucesso
+        const result = await response.json();
+        
+        if (totalSelecionados > 1) {
+            showSuccess('Ordens de compra processadas com sucesso! Status atualizados para aprovado.');
         } else {
-            const result = await response.json();
-            if (totalSelecionados > 1) {
-                showSuccess('Ordens de compra geradas: ' + JSON.stringify(result));
-            } else {
-                showSuccess('Ordem de compra gerada: ' + JSON.stringify(result));
-            }
+            showSuccess('Ordem de compra processada com sucesso! Status atualizado para aprovado.');
         }
+        
+        // Recarregar os orçamentos após sucesso
+        setTimeout(() => {
+            carregarOrcamentos();
+            selecoes = {};
+        }, 2000);
 
     } catch (error) {
         console.error('Erro ao gerar ordens de compra:', error);
