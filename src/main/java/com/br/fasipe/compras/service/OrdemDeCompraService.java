@@ -124,22 +124,20 @@ public class OrdemDeCompraService {
             status = null;
         }
         
-        // Buscar apenas orçamentos aprovados e reprovados (não pendentes)
+        // Buscar todos os orçamentos (incluindo pendentes)
         List<Orcamento> orcamentos = orcamentoRepository.findWithFilters(
             dataInicial, dataFinal, fornecedorNome, produtoNome, null, status);
             
-        // Filtrar apenas aprovados e reprovados
-        List<Orcamento> orcamentosFiltrados = orcamentos.stream()
-            .filter(o -> "aprovado".equalsIgnoreCase(o.getStatus()) || "reprovado".equalsIgnoreCase(o.getStatus()))
-            .collect(Collectors.toList());
+        // Aceitar todos os status (pendente, aprovado, reprovado)
+        List<Orcamento> orcamentosFiltrados = orcamentos;
         
-        // Agrupar por: Fornecedor + Status + Data de Aprovação + Usuário Aprovador
+        // Agrupar por: Fornecedor + Status + Data de Aprovação/Emissão + Usuário Aprovador
         Map<String, List<Orcamento>> grupos = orcamentosFiltrados.stream()
             .collect(Collectors.groupingBy(o -> 
                 o.getFornecedor().getId() + "_" + 
                 o.getStatus().toUpperCase() + "_" + 
-                o.getDataGeracao() + "_" + 
-                (o.getUsuarioAprovador() != null ? o.getUsuarioAprovador().getIdUsuario() : "NULL")
+                (o.getDataGeracao() != null ? o.getDataGeracao() : o.getDataEmissao()) + "_" + 
+                (o.getUsuarioAprovador() != null ? o.getUsuarioAprovador().getIdUsuario() : "PENDENTE")
             ));
         
         List<PedidoAgrupadoDTO> pedidosAgrupados = new ArrayList<>();
@@ -153,7 +151,9 @@ public class OrdemDeCompraService {
             PedidoAgrupadoDTO pedido = new PedidoAgrupadoDTO();
             
             // Gerar ID do Pedido: PED-{fornecedorId}-{AAAAMMDD}-{seq}
-            String dataFormatada = primeiro.getDataGeracao().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            // Usar dataGeracao se disponível, senão usar dataEmissao (para pendentes)
+            LocalDate dataParaId = primeiro.getDataGeracao() != null ? primeiro.getDataGeracao() : primeiro.getDataEmissao();
+            String dataFormatada = dataParaId.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
             String idPedidoGerado = String.format("PED-%d-%s-%03d", 
                 primeiro.getFornecedor().getId(), dataFormatada, sequencial++);
             pedido.setIdPedido(idPedidoGerado);
@@ -196,9 +196,9 @@ public class OrdemDeCompraService {
                 .sum();
             pedido.setValorTotal(valorTotal);
             
-            // Status e data de geração
+            // Status e data de geração (usar data emissão para pendentes)
             pedido.setStatus(primeiro.getStatus());
-            pedido.setDataGeracao(primeiro.getDataGeracao());
+            pedido.setDataGeracao(primeiro.getDataGeracao() != null ? primeiro.getDataGeracao() : primeiro.getDataEmissao());
             
             // Usuário aprovador
             if (primeiro.getUsuarioAprovador() != null) {
