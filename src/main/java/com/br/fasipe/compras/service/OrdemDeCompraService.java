@@ -104,7 +104,8 @@ public class OrdemDeCompraService {
                                                       String fornecedorNome, String produtoNome, Long idOrcamento, 
                                                       String status, BigDecimal valorMinimo, BigDecimal valorMaximo) {
         
-        if (status != null && (status.trim().isEmpty() || status.equalsIgnoreCase("todos"))) {
+        // Limpar status se for vazio, "todos" ou apenas espaços
+        if (status != null && (status.trim().isEmpty() || status.trim().equalsIgnoreCase("todos") || status.trim().equals(""))) {
             status = null;
         }
         

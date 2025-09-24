@@ -21,23 +21,17 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     
     @Transactional
     @Modifying
-    @Query("UPDATE Orcamento o SET o.status = 'reprovado' WHERE o.produto.id IN :produtoIds AND o.idOrcamento NOT IN :orcamentoIdsAprovados AND o.status = 'Pendente'")
+    @Query("UPDATE Orcamento o SET o.status = 'REPROVADO' WHERE o.produto.id IN :produtoIds AND o.idOrcamento NOT IN :orcamentoIdsAprovados AND o.status = 'Pendente'")
     void reprovarConcorrentes(@Param("produtoIds") Set<Integer> produtoIds, @Param("orcamentoIdsAprovados") List<Long> orcamentoIdsAprovados);
 
-    // CORREÇÃO: Adicionados filtros para valorMinimo e valorMaximo
+    // CORREÇÃO: Usar sempre dataEmissao para filtros de data (data da cotação)
     @Query("SELECT o from Orcamento o WHERE " +
-           "(:dataInicial IS NULL OR " +
-           "  (LOWER(o.status) = 'aprovado' AND o.dataGeracao >= :dataInicial) OR " +
-           "  (LOWER(o.status) <> 'aprovado' AND o.dataEmissao >= :dataInicial)" +
-           ") AND " +
-           "(:dataFinal IS NULL OR " +
-           "  (LOWER(o.status) = 'aprovado' AND o.dataGeracao <= :dataFinal) OR " +
-           "  (LOWER(o.status) <> 'aprovado' AND o.dataEmissao <= :dataFinal)" +
-           ") AND " +
+           "(:dataInicial IS NULL OR o.dataEmissao >= :dataInicial) AND " +
+           "(:dataFinal IS NULL OR o.dataEmissao <= :dataFinal) AND " +
            "(:fornecedorNome IS NULL OR LOWER(o.fornecedor.descricao) LIKE LOWER(CONCAT('%', :fornecedorNome, '%'))) AND " +
            "(:produtoNome IS NULL OR LOWER(o.produto.nome) LIKE LOWER(CONCAT('%', :produtoNome, '%'))) AND " +
            "(:idOrcamento IS NULL OR o.idOrcamento = :idOrcamento) AND " +
-           "(:status IS NULL OR LOWER(o.status) = LOWER(:status)) AND " +
+           "(:status IS NULL OR UPPER(o.status) = UPPER(:status)) AND " +
            "(:valorMinimo IS NULL OR (o.precoCompra * o.quantidade) >= :valorMinimo) AND " +
            "(:valorMaximo IS NULL OR (o.precoCompra * o.quantidade) <= :valorMaximo)")
     List<Orcamento> findWithFilters(

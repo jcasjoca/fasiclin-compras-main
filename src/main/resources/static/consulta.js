@@ -30,6 +30,7 @@ const filtros = {
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     configurarEventListeners();
+    // Removido: carregarDatasDisponiveis() - usuário preenche livremente
     // Removido: definirDatasPadrao() - não carregar automaticamente
     // Removido: consultarOrdens() - usuário deve consultar manualmente
 });
@@ -68,36 +69,33 @@ function configurarEventListeners() {
     exportExcelBtn.addEventListener('click', () => exportarDados('excel'));
 }
 
-/**
- * Define datas padrão (últimos 30 dias)
- */
-function definirDatasPadrao() {
-    const hoje = new Date();
-    const trintaDiasAtras = new Date();
-    trintaDiasAtras.setDate(hoje.getDate() - 30);
-    
-    filtros.dataFim.value = hoje.toISOString().split('T')[0];
-    filtros.dataInicio.value = trintaDiasAtras.toISOString().split('T')[0];
-}
+
 
 /**
  * Valida as datas de início e fim
  */
 function validarDatas() {
-    const dataInicio = new Date(filtros.dataInicio.value);
-    const dataFim = new Date(filtros.dataFim.value);
+    const dataInicioValue = filtros.dataInicio.value;
+    const dataFimValue = filtros.dataFim.value;
     
-    if (filtros.dataInicio.value && filtros.dataFim.value && dataInicio > dataFim) {
-        showError('A data de início não pode ser posterior à data de fim.');
-        filtros.dataInicio.style.borderColor = '#e74c3c';
-        filtros.dataFim.style.borderColor = '#e74c3c';
-        return false;
-    } else {
-        filtros.dataInicio.style.borderColor = '#d9d9d9';
-        filtros.dataFim.style.borderColor = '#d9d9d9';
-        hideError();
-        return true;
+    // Se ambas as datas estão preenchidas, validar se data final é maior que inicial
+    if (dataInicioValue && dataFimValue) {
+        const dataInicio = new Date(dataInicioValue);
+        const dataFim = new Date(dataFimValue);
+        
+        if (dataInicio > dataFim) {
+            showError('A data final não pode ser anterior à data inicial.');
+            filtros.dataInicio.style.borderColor = '#e74c3c';
+            filtros.dataFim.style.borderColor = '#e74c3c';
+            return false;
+        }
     }
+    
+    // Reset das bordas se validação passou
+    filtros.dataInicio.style.borderColor = '#d9d9d9';
+    filtros.dataFim.style.borderColor = '#d9d9d9';
+    hideError();
+    return true;
 }
 
 /**
@@ -180,36 +178,47 @@ async function consultarOrdens() {
         // Construir URL com parâmetros
         const params = new URLSearchParams();
         
-        Object.entries(filtros).forEach(([key, elemento]) => {
-            if (elemento && elemento.value && elemento.value.trim() !== '') {
-                let valor = elemento.value.trim();
-                
-                // Validação específica para cada tipo de filtro
-                if (key === 'idPedido') {
-                    const id = parseInt(valor);
-                    if (!isNaN(id) && id > 0) {
-                        params.append('id', id.toString());
-                    }
-                } else if (key === 'fornecedor') {
-                    // Apenas adicionar se não estiver vazio
-                    if (valor.length >= 2) { // Mínimo 2 caracteres para evitar muitos resultados
-                        params.append(key, valor);
-                    }
-                } else if (key === 'produto') {
-                    // Apenas adicionar se não estiver vazio
-                    if (valor.length >= 2) { // Mínimo 2 caracteres para evitar muitos resultados
-                        params.append(key, valor);
-                    }
-                } else if (key === 'valorMinimo' || key === 'valorMaximo') {
-                    const valorNum = parseFloat(valor);
-                    if (!isNaN(valorNum) && valorNum >= 0) {
-                        params.append(key, valorNum.toString());
-                    }
-                } else {
-                    params.append(key, valor);
-                }
+        // Construir parâmetros de forma mais clara
+        if (filtros.idPedido.value && filtros.idPedido.value.trim() !== '') {
+            const id = parseInt(filtros.idPedido.value.trim());
+            if (!isNaN(id) && id > 0) {
+                params.append('idOrcamento', id.toString());
             }
-        });
+        }
+        
+        if (filtros.dataInicio.value && filtros.dataInicio.value.trim() !== '') {
+            params.append('dataInicial', filtros.dataInicio.value.trim());
+        }
+        
+        if (filtros.dataFim.value && filtros.dataFim.value.trim() !== '') {
+            params.append('dataFinal', filtros.dataFim.value.trim());
+        }
+        
+        if (filtros.fornecedor.value && filtros.fornecedor.value.trim() !== '' && filtros.fornecedor.value.trim().length >= 2) {
+            params.append('fornecedorNome', filtros.fornecedor.value.trim());
+        }
+        
+        if (filtros.produto.value && filtros.produto.value.trim() !== '' && filtros.produto.value.trim().length >= 2) {
+            params.append('produtoNome', filtros.produto.value.trim());
+        }
+        
+        if (filtros.status.value && filtros.status.value.trim() !== '') {
+            params.append('status', filtros.status.value.trim());
+        }
+        
+        if (filtros.valorMinimo.value && filtros.valorMinimo.value.trim() !== '') {
+            const valorNum = parseFloat(filtros.valorMinimo.value.trim());
+            if (!isNaN(valorNum) && valorNum >= 0) {
+                params.append('valorMinimo', valorNum.toString());
+            }
+        }
+        
+        if (filtros.valorMaximo.value && filtros.valorMaximo.value.trim() !== '') {
+            const valorNum = parseFloat(filtros.valorMaximo.value.trim());
+            if (!isNaN(valorNum) && valorNum >= 0) {
+                params.append('valorMaximo', valorNum.toString());
+            }
+        }
 
         const url = `/api/ordens-de-compra${params.toString() ? '?' + params.toString() : ''}`;
         
@@ -236,11 +245,9 @@ async function consultarOrdens() {
             throw new Error('Formato de resposta inválido');
         }
 
-        // Filtrar resultados no frontend para garantir consistência
-        const ordensFiltradas = filtrarResultadosLocalmente(ordens);
-        
-        ordensCarregadas = ordensFiltradas;
-        exibirResultados(ordensFiltradas);
+        // Backend já faz a filtragem, não precisamos filtrar localmente
+        ordensCarregadas = ordens;
+        exibirResultados(ordens);
 
     } catch (error) {
         console.error('Erro ao consultar ordens:', error);
@@ -336,18 +343,18 @@ function exibirResultados(ordens) {
     ordens.forEach(ordem => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${ordem.id}</td>
-            <td class="date-column">${formatarData(ordem.dataCotacao)}</td>
+            <td>${ordem.idOrcamento}</td>
+            <td class="date-column">${formatarData(ordem.dataEmissao)}</td>
             <td>
-                <strong>${ordem.fornecedor.nomeFantasia}</strong><br>
-                <small>${ordem.fornecedor.razaoSocial}</small>
+                <strong>${ordem.nomeFornecedor}</strong><br>
+                <small>${ordem.descricaoFornecedor || ''}</small>
             </td>
             <td>
-                <strong>${ordem.produto.nome}</strong><br>
-                <small>${ordem.produto.descricao || ''}</small>
+                <strong>${ordem.nomeProduto}</strong><br>
+                <small>${ordem.descricaoProduto || ''}</small>
             </td>
-            <td>${ordem.quantidade} ${ordem.unimedida.sigla}</td>
-            <td class="currency">R$ ${formatarMoeda(ordem.valorUnitario)}</td>
+            <td>${ordem.quantidade} ${ordem.unidadeAbreviacao}</td>
+            <td class="currency">R$ ${formatarMoeda(ordem.precoCompra)}</td>
             <td class="currency">R$ ${formatarMoeda(ordem.valorTotal)}</td>
             <td>
                 <span class="status-badge status-${ordem.status}">
@@ -361,7 +368,7 @@ function exibirResultados(ordens) {
 
     // Atualizar estatísticas
     const totalOrdens = ordens.length;
-    const valorTotal = ordens.reduce((sum, ordem) => sum + parseFloat(ordem.valorTotal), 0);
+    const valorTotal = ordens.reduce((sum, ordem) => sum + parseFloat(ordem.valorTotal.toString().replace(',', '.')), 0);
     
     resultsCount.innerHTML = `
         ${totalOrdens} ordem${totalOrdens !== 1 ? 's' : ''} encontrada${totalOrdens !== 1 ? 's' : ''} 
@@ -439,15 +446,15 @@ function exportarExcel() {
     
     ordensCarregadas.forEach(ordem => {
         const row = [
-            ordem.id,
-            formatarData(ordem.dataCotacao),
-            `"${ordem.fornecedor.nomeFantasia}"`,
-            `"${ordem.fornecedor.razaoSocial}"`,
-            `"${ordem.produto.nome}"`,
-            `"${ordem.produto.descricao || ''}"`,
+            ordem.idOrcamento,
+            formatarData(ordem.dataEmissao),
+            `"${ordem.nomeFornecedor}"`,
+            `"${ordem.descricaoFornecedor || ''}"`,
+            `"${ordem.nomeProduto}"`,
+            `"${ordem.descricaoProduto || ''}"`,
             ordem.quantidade,
-            ordem.unimedida.sigla,
-            ordem.valorUnitario.toString().replace('.', ','),
+            ordem.unidadeAbreviacao,
+            ordem.precoCompra.toString().replace('.', ','),
             ordem.valorTotal.toString().replace('.', ','),
             traduzirStatus(ordem.status),
             `"${ordem.observacoes || ''}"`
@@ -519,19 +526,19 @@ function criarConteudoParaImpressao() {
     ordensCarregadas.forEach(ordem => {
         html += `
             <tr>
-                <td>${ordem.id}</td>
-                <td class="date-column">${formatarData(ordem.dataCotacao)}</td>
-                <td>${ordem.fornecedor.nomeFantasia}</td>
-                <td>${ordem.produto.nome}</td>
-                <td>${ordem.quantidade} ${ordem.unimedida.sigla}</td>
-                <td class="currency">R$ ${formatarMoeda(ordem.valorUnitario)}</td>
+                <td>${ordem.idOrcamento}</td>
+                <td class="date-column">${formatarData(ordem.dataEmissao)}</td>
+                <td>${ordem.nomeFornecedor}</td>
+                <td>${ordem.nomeProduto}</td>
+                <td>${ordem.quantidade} ${ordem.unidadeAbreviacao}</td>
+                <td class="currency">R$ ${formatarMoeda(ordem.precoCompra)}</td>
                 <td class="currency">R$ ${formatarMoeda(ordem.valorTotal)}</td>
                 <td>${traduzirStatus(ordem.status)}</td>
             </tr>
         `;
     });
     
-    const valorTotal = ordensCarregadas.reduce((sum, ordem) => sum + parseFloat(ordem.valorTotal), 0);
+    const valorTotal = ordensCarregadas.reduce((sum, ordem) => sum + parseFloat(ordem.valorTotal.toString().replace(',', '.')), 0);
     
     html += `
         </tbody>
@@ -588,13 +595,16 @@ function habilitarExportacao(habilitar) {
 }
 
 function formatarMoeda(valor) {
+    // Converter string com vírgula para número
+    let numeroValor = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : valor;
     return new Intl.NumberFormat('pt-BR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(valor);
+    }).format(numeroValor);
 }
 
 function formatarData(dataString) {
+    if (!dataString) return '-';
     const data = new Date(dataString);
     return data.toLocaleDateString('pt-BR');
 }
@@ -603,7 +613,8 @@ function traduzirStatus(status) {
     const traducoes = {
         'PENDENTE': 'Pendente',
         'APROVADO': 'Aprovado',
-        'REJEITADO': 'Rejeitado'
+        'REPROVADO': 'Reprovado',
+        'REJEITADO': 'Reprovado' // Compatibilidade
     };
     return traducoes[status] || status;
 }
