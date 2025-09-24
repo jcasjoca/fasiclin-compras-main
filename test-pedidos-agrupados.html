@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Pedidos Agrupados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste - Consulta de Pedidos Agrupados</h1>
+        
+        <form id="consultaForm">
+            <div class="form-group">
+                <label for="dataInicial">Data Inicial:</label>
+                <input type="date" id="dataInicial" name="dataInicial">
+            </div>
+            
+            <div class="form-group">
+                <label for="dataFinal">Data Final:</label>
+                <input type="date" id="dataFinal" name="dataFinal">
+            </div>
+            
+            <div class="form-group">
+                <label for="fornecedorNome">Nome do Fornecedor:</label>
+                <input type="text" id="fornecedorNome" name="fornecedorNome" placeholder="Digite o nome do fornecedor">
+            </div>
+            
+            <div class="form-group">
+                <label for="produtoNome">Nome do Produto:</label>
+                <input type="text" id="produtoNome" name="produtoNome" placeholder="Digite o nome do produto">
+            </div>
+            
+            <div class="form-group">
+                <label for="idPedido">ID do Pedido:</label>
+                <input type="text" id="idPedido" name="idPedido" placeholder="Digite o ID do pedido">
+            </div>
+            
+            <div class="form-group">
+                <label for="status">Status:</label>
+                <select id="status" name="status">
+                    <option value="">Todos</option>
+                    <option value="Aprovado">Aprovado</option>
+                    <option value="Reprovado">Reprovado</option>
+                    <option value="Pendente">Pendente</option>
+                </select>
+            </div>
+            
+            <button type="button" onclick="consultarPedidos()">Consultar Pedidos Agrupados</button>
+            <button type="button" onclick="consultarTodos()">Consultar Todos</button>
+            <button type="button" onclick="limparResultados()">Limpar</button>
+        </form>
+        
+        <div id="mensagem"></div>
+        
+        <div class="results" id="resultados" style="display: none;">
+            <h3>Resultados:</h3>
+            <div id="contadorResultados"></div>
+            <table id="tabelaResultados">
+                <thead>
+                    <tr>
+                        <th>ID do Pedido</th>
+                        <th>ID dos Orçamentos</th>
+                        <th>Fornecedor</th>
+                        <th>Data de Emissão</th>
+                        <th>Valor Total</th>
+                        <th>Status</th>
+                        <th>Usuário Aprovador</th>
+                        <th>Produtos</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api';
+
+        function mostrarMensagem(mensagem, tipo) {
+            const divMensagem = document.getElementById('mensagem');
+            divMensagem.innerHTML = `<div class="${tipo}">${mensagem}</div>`;
+            setTimeout(() => {
+                divMensagem.innerHTML = '';
+            }, 5000);
+        }
+
+        function consultarPedidos() {
+            const formData = new FormData(document.getElementById('consultaForm'));
+            const params = new URLSearchParams();
+            
+            for (let [key, value] of formData.entries()) {
+                if (value && value.trim() !== '') {
+                    params.append(key, value);
+                }
+            }
+            
+            const url = `${API_BASE_URL}/pedidos-agrupados?${params.toString()}`;
+            
+            mostrarMensagem('Consultando pedidos agrupados...', 'success');
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    exibirResultados(data);
+                    mostrarMensagem(`Consulta realizada com sucesso! ${data.length} resultado(s) encontrado(s).`, 'success');
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    mostrarMensagem(`Erro ao consultar pedidos: ${error.message}`, 'error');
+                });
+        }
+
+        function consultarTodos() {
+            const url = `${API_BASE_URL}/pedidos-agrupados`;
+            
+            mostrarMensagem('Consultando todos os pedidos agrupados...', 'success');
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    exibirResultados(data);
+                    mostrarMensagem(`Consulta realizada com sucesso! ${data.length} resultado(s) encontrado(s).`, 'success');
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    mostrarMensagem(`Erro ao consultar pedidos: ${error.message}`, 'error');
+                });
+        }
+
+        function exibirResultados(dados) {
+            const resultados = document.getElementById('resultados');
+            const contador = document.getElementById('contadorResultados');
+            const corpoTabela = document.getElementById('corpoTabela');
+            
+            // Limpar resultados anteriores
+            corpoTabela.innerHTML = '';
+            
+            if (dados && dados.length > 0) {
+                contador.innerHTML = `<strong>${dados.length} pedido(s) agrupado(s) encontrado(s)</strong>`;
+                
+                dados.forEach(pedido => {
+                    const linha = document.createElement('tr');
+                    linha.innerHTML = `
+                        <td>${pedido.idPedido || 'N/A'}</td>
+                        <td>${Array.isArray(pedido.idOrcamentos) ? pedido.idOrcamentos.join(', ') : pedido.idOrcamentos || 'N/A'}</td>
+                        <td>${pedido.nomeFornecedor || 'N/A'}</td>
+                        <td>${pedido.rangeDataEmissao || 'N/A'}</td>
+                        <td>R$ ${pedido.valorTotal ? parseFloat(pedido.valorTotal).toFixed(2) : '0,00'}</td>
+                        <td>${pedido.status || 'N/A'}</td>
+                        <td>${pedido.nomeUsuarioAprovador || 'N/A'}</td>
+                        <td>${pedido.produtosDescricao || 'N/A'}</td>
+                    `;
+                    corpoTabela.appendChild(linha);
+                });
+                
+                resultados.style.display = 'block';
+            } else {
+                contador.innerHTML = '<strong>Nenhum resultado encontrado</strong>';
+                resultados.style.display = 'block';
+            }
+        }
+
+        function limparResultados() {
+            document.getElementById('resultados').style.display = 'none';
+            document.getElementById('consultaForm').reset();
+            document.getElementById('mensagem').innerHTML = '';
+        }
+
+        // Definir data padrão para últimos 30 dias
+        window.onload = function() {
+            const dataFinal = new Date();
+            const dataInicial = new Date(dataFinal);
+            dataInicial.setDate(dataInicial.getDate() - 30);
+            
+            document.getElementById('dataInicial').value = dataInicial.toISOString().split('T')[0];
+            document.getElementById('dataFinal').value = dataFinal.toISOString().split('T')[0];
+        };
+    </script>
+</body>
+</html>

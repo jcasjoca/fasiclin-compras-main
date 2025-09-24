@@ -283,8 +283,6 @@ async function gerarOrdensDeCompra() {
         hideMessages();
 
         const orcamentoIds = Object.values(selecoes).map(id => parseInt(id));
-        console.log('Orçamentos selecionados para processar:', orcamentoIds);
-        console.log('Seleções completas:', selecoes);
 
         const response = await fetch('/api/ordens-de-compra/processar', {
             method: 'POST',

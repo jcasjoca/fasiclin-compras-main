@@ -1,6 +1,7 @@
 package com.br.fasipe.compras.controller;
 
 import com.br.fasipe.compras.dto.OrcamentoDTO;
+import com.br.fasipe.compras.dto.PedidoAgrupadoDTO;
 import com.br.fasipe.compras.service.OrdemDeCompraService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -101,6 +102,30 @@ public class ControlePedidosController {
             headers.setContentDispositionFormData("attachment", "OrdensDeCompra.zip");
             
             return ResponseEntity.ok().headers(headers).body(zipBytes);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/pedidos-agrupados")
+    public ResponseEntity<List<PedidoAgrupadoDTO>> consultarPedidosAgrupados(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
+            @RequestParam(required = false) String fornecedorNome,
+            @RequestParam(required = false) String produtoNome,
+            @RequestParam(required = false) String idPedido,
+            @RequestParam(required = false) String status) {
+        
+        try {
+            if (dataInicial != null && dataFinal != null && dataInicial.isAfter(dataFinal)) {
+                return ResponseEntity.badRequest().build();
+            }
+            
+            List<PedidoAgrupadoDTO> pedidosAgrupados = ordemDeCompraService.consultarPedidosAgrupados(
+                dataInicial, dataFinal, fornecedorNome, produtoNome, idPedido, status);
+                
+            return ResponseEntity.ok(pedidosAgrupados);
+            
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

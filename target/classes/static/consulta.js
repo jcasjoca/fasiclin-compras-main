@@ -100,11 +100,26 @@ function validarIdPedido() {
     const idPedido = filtros.idPedido.value;
     
     if (idPedido && idPedido.trim() !== '') {
-        const id = parseInt(idPedido.trim());
-        if (isNaN(id) || id <= 0) {
-            showError('O ID do pedido deve ser um número positivo válido.');
+        const valor = idPedido.trim();
+        
+        // Aceitar formato PED-X-YYYYMMDD-XXX ou números simples
+        const formatoPedido = /^PED-\d+-\d{8}-\d{3}$/;
+        const numeroSimples = /^\d+$/;
+        
+        if (!formatoPedido.test(valor) && !numeroSimples.test(valor)) {
+            showError('O ID do pedido deve ser um número ou seguir o formato PED-X-YYYYMMDD-XXX.');
             filtros.idPedido.style.borderColor = '#e74c3c';
             return false;
+        }
+        
+        // Se for número simples, validar se é positivo
+        if (numeroSimples.test(valor)) {
+            const id = parseInt(valor);
+            if (id <= 0) {
+                showError('O ID do pedido deve ser um número positivo válido.');
+                filtros.idPedido.style.borderColor = '#e74c3c';
+                return false;
+            }
         }
     }
     
@@ -152,9 +167,16 @@ async function consultarOrdens() {
         
         // Construir parâmetros de forma mais clara
         if (filtros.idPedido.value && filtros.idPedido.value.trim() !== '') {
-            const id = parseInt(filtros.idPedido.value.trim());
-            if (!isNaN(id) && id > 0) {
-                params.append('idOrcamento', id.toString());
+            const idPedido = filtros.idPedido.value.trim();
+            // Se for um ID de pedido (formato PED-X-YYYYMMDD-XXX), usar como idPedido
+            // Se for um número, usar como idOrcamento para compatibilidade
+            if (idPedido.startsWith('PED-')) {
+                params.append('idPedido', idPedido);
+            } else {
+                const id = parseInt(idPedido);
+                if (!isNaN(id) && id > 0) {
+                    params.append('idOrcamento', id.toString());
+                }
             }
         }
         
@@ -178,7 +200,8 @@ async function consultarOrdens() {
             params.append('status', filtros.status.value.trim());
         }
 
-        const url = `/api/ordens-de-compra${params.toString() ? '?' + params.toString() : ''}`;
+        // NOVO: Usar endpoint de pedidos agrupados para gerar IDs automáticos
+        const url = `/api/pedidos-agrupados${params.toString() ? '?' + params.toString() : ''}`;
         
         const response = await fetch(url, {
             method: 'GET',
@@ -290,40 +313,38 @@ function filtrarResultadosLocalmente(ordens) {
 /**
  * Exibe os resultados da consulta
  */
-function exibirResultados(ordens) {
-    if (ordens.length === 0) {
+function exibirResultados(pedidosAgrupados) {
+    if (pedidosAgrupados.length === 0) {
         mostrarSemResultados();
         return;
     }
 
     resultsTableBody.innerHTML = '';
     
-    ordens.forEach(ordem => {
+    pedidosAgrupados.forEach(pedido => {
         const tr = document.createElement('tr');
         
-        // ID do Pedido - só existe se o orçamento foi aprovado (tem dataGeracao)
-        const idPedido = (ordem.status === 'Aprovado' || ordem.status === 'APROVADO') ? `PED-${ordem.idOrcamento}` : '-';
-        
+        // Usar os novos dados do sistema de pedidos agrupados
         tr.innerHTML = `
-            <td>${idPedido}</td>
-            <td>${ordem.idOrcamento}</td>
+            <td><strong>${pedido.idPedido}</strong></td>
+            <td>${Array.isArray(pedido.idOrcamentos) ? pedido.idOrcamentos.join(', ') : pedido.idOrcamentos}</td>
             <td>
-                <strong>${ordem.nomeFornecedor}</strong><br>
-                <small>${ordem.descricaoFornecedor || ''}</small>
+                <strong>${pedido.nomeFornecedor}</strong><br>
+                <small>ID: ${pedido.idFornecedor}</small>
             </td>
-            <td class="date-column">${formatarData(ordem.dataEmissao)}</td>
-            <td class="currency">R$ ${formatarMoeda(ordem.valorTotal)}</td>
+            <td class="date-column">${pedido.rangeDataEmissao}</td>
+            <td class="currency">R$ ${formatarMoeda(pedido.valorTotal)}</td>
             <td>
-                <span class="status-badge status-${ordem.status}">
-                    ${traduzirStatus(ordem.status)}
+                <span class="status-badge status-${pedido.status}">
+                    ${traduzirStatus(pedido.status)}
                 </span>
             </td>
             <td>
-                <button type="button" class="btn-action btn-detail" onclick="verDetalhes(${ordem.idOrcamento})" title="Ver Detalhes">
+                <button type="button" class="btn-action btn-detail" onclick="verDetalhesPedido('${pedido.idPedido}')" title="Ver Detalhes">
                     👁️ Ver
                 </button>
-                ${(ordem.status === 'Aprovado' || ordem.status === 'APROVADO') ? 
-                    `<button type="button" class="btn-action btn-pdf" onclick="gerarPDF(${ordem.idOrcamento})" title="Gerar PDF">
+                ${(pedido.status === 'Aprovado' || pedido.status === 'APROVADO') ? 
+                    `<button type="button" class="btn-action btn-pdf" onclick="gerarPDFPedido('${pedido.idPedido}')" title="Gerar PDF">
                         📄 PDF
                     </button>` : ''
                 }
@@ -332,12 +353,16 @@ function exibirResultados(ordens) {
         resultsTableBody.appendChild(tr);
     });
 
-    // Atualizar estatísticas
-    const totalOrdens = ordens.length;
-    const valorTotal = ordens.reduce((sum, ordem) => sum + parseFloat(ordem.valorTotal.toString().replace(',', '.')), 0);
+    // Atualizar estatísticas para pedidos agrupados
+    const totalPedidos = pedidosAgrupados.length;
+    const totalOrcamentos = pedidosAgrupados.reduce((sum, pedido) => {
+        return sum + (Array.isArray(pedido.idOrcamentos) ? pedido.idOrcamentos.length : 1);
+    }, 0);
+    const valorTotal = pedidosAgrupados.reduce((sum, pedido) => sum + parseFloat(pedido.valorTotal), 0);
     
     resultsCount.innerHTML = `
-        ${totalOrdens} ordem${totalOrdens !== 1 ? 's' : ''} encontrada${totalOrdens !== 1 ? 's' : ''} 
+        ${totalPedidos} pedido${totalPedidos !== 1 ? 's' : ''} agrupado${totalPedidos !== 1 ? 's' : ''} encontrado${totalPedidos !== 1 ? 's' : ''} 
+        • ${totalOrcamentos} orçamento${totalOrcamentos !== 1 ? 's' : ''}
         • Valor total: R$ ${formatarMoeda(valorTotal)}
     `;
     
@@ -549,7 +574,44 @@ function traduzirStatus(status) {
 }
 
 /**
- * Ver detalhes de um orçamento
+ * Ver detalhes de um pedido agrupado
+ */
+function verDetalhesPedido(idPedido) {
+    const pedido = ordensCarregadas.find(p => p.idPedido === idPedido);
+    if (pedido) {
+        const orcamentosStr = Array.isArray(pedido.idOrcamentos) ? pedido.idOrcamentos.join(', ') : pedido.idOrcamentos;
+        const produtosStr = Array.isArray(pedido.nomesProdutos) ? pedido.nomesProdutos.join(', ') : (pedido.produtosDescricao || 'N/A');
+        
+        alert(`Detalhes do Pedido ${idPedido}:\n\n` +
+              `Fornecedor: ${pedido.nomeFornecedor} (ID: ${pedido.idFornecedor})\n` +
+              `Orçamentos: ${orcamentosStr}\n` +
+              `Produtos: ${produtosStr}\n` +
+              `Quantidade de Produtos: ${pedido.quantidadeProdutos || 'N/A'}\n` +
+              `Valor Total: R$ ${formatarMoeda(pedido.valorTotal)}\n` +
+              `Status: ${traduzirStatus(pedido.status)}\n` +
+              `Período de Emissão: ${pedido.rangeDataEmissao}\n` +
+              `Data de Geração: ${formatarData(pedido.dataGeracao)}\n` +
+              `Usuário Aprovador: ${pedido.nomeUsuarioAprovador || 'N/A'}`);
+    }
+}
+
+/**
+ * Gerar PDF de um pedido agrupado
+ */
+function gerarPDFPedido(idPedido) {
+    const pedido = ordensCarregadas.find(p => p.idPedido === idPedido);
+    if (pedido && Array.isArray(pedido.idOrcamentos)) {
+        // Se há múltiplos orçamentos, gerar ZIP com todos os PDFs
+        const orcamentosIds = pedido.idOrcamentos.join(',');
+        window.open(`/api/ordens-de-compra/download?ids=${orcamentosIds}`, '_blank');
+    } else if (pedido && pedido.idOrcamentos) {
+        // Se há apenas um orçamento, gerar PDF direto
+        window.open(`/api/ordens-de-compra/visualizar/${pedido.idOrcamentos}`, '_blank');
+    }
+}
+
+/**
+ * Ver detalhes de um orçamento (função legada mantida para compatibilidade)
  */
 function verDetalhes(idOrcamento) {
     const ordem = ordensCarregadas.find(o => o.idOrcamento === idOrcamento);
@@ -568,7 +630,7 @@ function verDetalhes(idOrcamento) {
 }
 
 /**
- * Gerar PDF de um orçamento específico
+ * Gerar PDF de um orçamento específico (função legada mantida para compatibilidade)
  */
 function gerarPDF(idOrcamento) {
     window.open(`/api/ordens-de-compra/visualizar/${idOrcamento}`, '_blank');

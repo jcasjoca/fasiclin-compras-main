@@ -1,6 +1,7 @@
 package com.br.fasipe.compras.service;
 
 import com.br.fasipe.compras.dto.OrcamentoDTO;
+import com.br.fasipe.compras.dto.PedidoAgrupadoDTO;
 import com.br.fasipe.compras.model.Fornecedor;
 import com.br.fasipe.compras.model.Orcamento;
 import com.br.fasipe.compras.model.Usuario;
@@ -11,10 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,40 +37,27 @@ public class OrdemDeCompraService {
 
     @Transactional
     public void processarStatus(List<Long> orcamentoIdsAprovados) {
-        System.out.println("=== DEBUG: Processando orçamentos ===");
-        System.out.println("IDs recebidos para aprovação: " + orcamentoIdsAprovados);
-        
         if (orcamentoIdsAprovados == null || orcamentoIdsAprovados.isEmpty()) {
-            System.out.println("Lista vazia, retornando...");
             return;
         }
         Usuario usuarioPadrao = obterUsuarioPadrao();
         List<Orcamento> orcamentosAprovados = orcamentoRepository.findAllById(orcamentoIdsAprovados);
-        System.out.println("Orçamentos encontrados no DB: " + orcamentosAprovados.size());
-        
         if (orcamentosAprovados.isEmpty()) {
-            System.out.println("Nenhum orçamento encontrado no banco, retornando...");
             return;
         }
-        
         Set<Integer> produtoIds = orcamentosAprovados.stream()
                 .map(orcamento -> orcamento.getProduto().getId())
                 .collect(Collectors.toSet());
-        System.out.println("Produtos dos orçamentos aprovados: " + produtoIds);
-        
         if (!produtoIds.isEmpty()) {
-             System.out.println("Reprovando concorrentes dos produtos: " + produtoIds + " exceto IDs: " + orcamentoIdsAprovados);
              orcamentoRepository.reprovarConcorrentes(produtoIds, orcamentoIdsAprovados);
         }
         LocalDate agora = LocalDate.now();
         for (Orcamento orcamento : orcamentosAprovados) {
-            System.out.println("Aprovando orçamento ID: " + orcamento.getIdOrcamento() + " do produto ID: " + orcamento.getProduto().getId());
             orcamento.setStatus("aprovado");
             orcamento.setDataGeracao(agora);
             orcamento.setUsuarioAprovador(usuarioPadrao);
         }
         orcamentoRepository.saveAll(orcamentosAprovados);
-        System.out.println("=== FIM DEBUG ===");
     }
     
     public byte[] gerarPdfUnicoPorId(Long orcamentoId) {
@@ -127,6 +113,117 @@ public class OrdemDeCompraService {
         return orcamentos.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+    
+    public List<PedidoAgrupadoDTO> consultarPedidosAgrupados(LocalDate dataInicial, LocalDate dataFinal, 
+                                                           String fornecedorNome, String produtoNome, String idPedido, 
+                                                           String status) {
+        
+        // Limpar status se for vazio, "todos" ou apenas espaços
+        if (status != null && (status.trim().isEmpty() || status.trim().equalsIgnoreCase("todos") || status.trim().equals(""))) {
+            status = null;
+        }
+        
+        // Buscar apenas orçamentos aprovados e reprovados (não pendentes)
+        List<Orcamento> orcamentos = orcamentoRepository.findWithFilters(
+            dataInicial, dataFinal, fornecedorNome, produtoNome, null, status);
+            
+        // Filtrar apenas aprovados e reprovados
+        List<Orcamento> orcamentosFiltrados = orcamentos.stream()
+            .filter(o -> "aprovado".equalsIgnoreCase(o.getStatus()) || "reprovado".equalsIgnoreCase(o.getStatus()))
+            .collect(Collectors.toList());
+        
+        // Agrupar por: Fornecedor + Status + Data de Aprovação + Usuário Aprovador
+        Map<String, List<Orcamento>> grupos = orcamentosFiltrados.stream()
+            .collect(Collectors.groupingBy(o -> 
+                o.getFornecedor().getId() + "_" + 
+                o.getStatus().toUpperCase() + "_" + 
+                o.getDataGeracao() + "_" + 
+                (o.getUsuarioAprovador() != null ? o.getUsuarioAprovador().getIdUsuario() : "NULL")
+            ));
+        
+        List<PedidoAgrupadoDTO> pedidosAgrupados = new ArrayList<>();
+        int sequencial = 1;
+        
+        for (Map.Entry<String, List<Orcamento>> entry : grupos.entrySet()) {
+            List<Orcamento> grupoOrcamentos = entry.getValue();
+            if (grupoOrcamentos.isEmpty()) continue;
+            
+            Orcamento primeiro = grupoOrcamentos.get(0);
+            PedidoAgrupadoDTO pedido = new PedidoAgrupadoDTO();
+            
+            // Gerar ID do Pedido: PED-{fornecedorId}-{AAAAMMDD}-{seq}
+            String dataFormatada = primeiro.getDataGeracao().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            String idPedidoGerado = String.format("PED-%d-%s-%03d", 
+                primeiro.getFornecedor().getId(), dataFormatada, sequencial++);
+            pedido.setIdPedido(idPedidoGerado);
+            
+            // Coletar IDs dos orçamentos
+            List<Long> idsOrcamentos = grupoOrcamentos.stream()
+                .map(Orcamento::getIdOrcamento)
+                .collect(Collectors.toList());
+            pedido.setIdOrcamentos(idsOrcamentos);
+            
+            // Dados do fornecedor
+            pedido.setIdFornecedor(primeiro.getFornecedor().getId());
+            pedido.setNomeFornecedor(primeiro.getFornecedor().getDescricao());
+            
+            // Range de datas de emissão
+            LocalDate dataMinima = grupoOrcamentos.stream()
+                .map(Orcamento::getDataEmissao)
+                .min(LocalDate::compareTo)
+                .orElse(primeiro.getDataEmissao());
+            LocalDate dataMaxima = grupoOrcamentos.stream()
+                .map(Orcamento::getDataEmissao)
+                .max(LocalDate::compareTo)
+                .orElse(primeiro.getDataEmissao());
+                
+            pedido.setDataEmissaoInicio(dataMinima);
+            pedido.setDataEmissaoFim(dataMaxima);
+            
+            if (dataMinima.equals(dataMaxima)) {
+                pedido.setRangeDataEmissao(dataMinima.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            } else {
+                pedido.setRangeDataEmissao(
+                    dataMinima.format(DateTimeFormatter.ofPattern("dd/MM")) + " - " +
+                    dataMaxima.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                );
+            }
+            
+            // Valor total
+            Double valorTotal = grupoOrcamentos.stream()
+                .mapToDouble(o -> o.getPrecoCompra().doubleValue() * o.getQuantidade())
+                .sum();
+            pedido.setValorTotal(valorTotal);
+            
+            // Status e data de geração
+            pedido.setStatus(primeiro.getStatus());
+            pedido.setDataGeracao(primeiro.getDataGeracao());
+            
+            // Usuário aprovador
+            if (primeiro.getUsuarioAprovador() != null) {
+                pedido.setNomeUsuarioAprovador(primeiro.getUsuarioAprovador().getLoginUsuario());
+            }
+            
+            // Produtos
+            pedido.setQuantidadeProdutos(grupoOrcamentos.size());
+            List<String> nomesProdutos = grupoOrcamentos.stream()
+                .map(o -> o.getProduto().getNome())
+                .distinct()
+                .collect(Collectors.toList());
+            pedido.setNomesProdutos(nomesProdutos);
+            
+            pedidosAgrupados.add(pedido);
+        }
+        
+        // Filtrar por ID do pedido se fornecido
+        if (idPedido != null && !idPedido.trim().isEmpty()) {
+            pedidosAgrupados = pedidosAgrupados.stream()
+                .filter(p -> p.getIdPedido().toLowerCase().contains(idPedido.toLowerCase()))
+                .collect(Collectors.toList());
+        }
+        
+        return pedidosAgrupados;
     }
     
     private Usuario obterUsuarioPadrao() {
