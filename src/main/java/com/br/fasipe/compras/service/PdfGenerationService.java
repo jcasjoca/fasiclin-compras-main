@@ -305,10 +305,21 @@ public class PdfGenerationService {
                 dataHoraAprovacao = pedido.getDataHoraAprovacao().format(
                     java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
             } else if (pedido.getDataGeracao() != null) {
-                // Fallback: usar data de geração com hora atual (para registros antigos)
-                dataHoraAprovacao = pedido.getDataGeracao().format(
-                    java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " " +
-                    java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+                // Fallback: usar data de geração com hora FIXA (para registros antigos)
+                java.time.LocalDateTime timestampFixo = null;
+                if (pedido.getIdOrcamentos() != null && !pedido.getIdOrcamentos().isEmpty()) {
+                    timestampFixo = OrdemDeCompraService.getDataHoraAprovacao(pedido.getIdOrcamentos().get(0));
+                }
+                
+                if (timestampFixo != null) {
+                    // Usar timestamp fixo armazenado
+                    dataHoraAprovacao = timestampFixo.format(
+                        java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+                } else {
+                    // Usar data original com hora fixa 14:30 para registros antigos
+                    dataHoraAprovacao = pedido.getDataGeracao().format(
+                        java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 14:30";
+                }
             } else {
                 // Fallback final
                 dataHoraAprovacao = java.time.LocalDateTime.now().format(
