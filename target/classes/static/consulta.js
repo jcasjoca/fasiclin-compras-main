@@ -129,40 +129,53 @@ function exportarPDFsSelecionados() {
 }
 
 /**
- * Baixa múltiplos PDFs em sequência
+ * Baixa múltiplos PDFs como ZIP
  */
 function baixarMultiplosPDFs(idsPedidos) {
-    let contador = 0;
-    const total = idsPedidos.length;
-    
-    // Mostrar progresso
     const mensagemOriginal = exportPdfBtn.textContent;
     exportPdfBtn.disabled = true;
+    exportPdfBtn.textContent = 'Gerando ZIP...';
     
-    function baixarProximo() {
-        if (contador >= total) {
-            exportPdfBtn.textContent = mensagemOriginal;
-            exportPdfBtn.disabled = false;
-            return;
+    // Enviar requisição POST para gerar ZIP
+    fetch('/api/pedidos-agrupados/pdf/zip', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(idsPedidos)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Erro ao gerar ZIP dos PDFs');
         }
-        
-        const idPedido = idsPedidos[contador];
-        exportPdfBtn.textContent = `Baixando ${contador + 1}/${total}...`;
-        
-        // Criar link de download temporário
+        return response.blob();
+    })
+    .then(blob => {
+        // Criar link de download para o ZIP
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = `/api/pedidos-agrupados/pdf/${idPedido}`;
-        link.download = `Pedido_${idPedido}.pdf`;
-        link.target = '_blank';
+        link.href = url;
+        
+        // Nome do arquivo ZIP com data atual
+        const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '');
+        link.download = `Pedidos_${dataAtual}.zip`;
+        
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         
-        contador++;
-        setTimeout(baixarProximo, 1000); // Aguardar 1 segundo entre downloads
-    }
-    
-    baixarProximo();
+        // Limpar URL do blob
+        window.URL.revokeObjectURL(url);
+        
+        exportPdfBtn.textContent = mensagemOriginal;
+        exportPdfBtn.disabled = false;
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showError('Erro ao baixar PDFs: ' + error.message);
+        exportPdfBtn.textContent = mensagemOriginal;
+        exportPdfBtn.disabled = false;
+    });
 }
 
 /**
@@ -446,12 +459,9 @@ function exibirResultados(pedidosAgrupados) {
                 </span>
             </td>
             <td>
-                ${isAprovado ? 
-                    `<button type="button" class="btn-action btn-pdf" onclick="gerarPDFPedido('${pedido.idPedido}')" title="Gerar PDF">
-                        📄 PDF
-                    </button>` : 
-                    '<span style="color: #999;">Não disponível</span>'
-                }
+                <button type="button" class="btn-action btn-pdf" onclick="gerarPDFPedido('${pedido.idPedido}')" title="Visualizar PDF">
+                    📄 PDF
+                </button>
             </td>
         `;
         resultsTableBody.appendChild(tr);

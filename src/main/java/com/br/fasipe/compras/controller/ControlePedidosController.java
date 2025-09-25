@@ -149,5 +149,25 @@ public class ControlePedidosController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @PostMapping("/pedidos-agrupados/pdf/zip")
+    public ResponseEntity<byte[]> gerarZipPedidosAgrupados(@RequestBody List<String> idsPedidos) {
+        try {
+            byte[] zipBytes = ordemDeCompraService.gerarZipPedidosAgrupados(idsPedidos);
+
+            if (zipBytes == null || zipBytes.length == 0) {
+                return ResponseEntity.notFound().build();
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "Pedidos_" + 
+                java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy")) + ".zip");
+            
+            return ResponseEntity.ok().headers(headers).body(zipBytes);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }
 

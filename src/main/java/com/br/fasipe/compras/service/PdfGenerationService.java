@@ -264,10 +264,23 @@ public class PdfGenerationService {
             document.add(new Paragraph("─────────────────────────────────────────────────────────────────────")
                 .setFontSize(10));
             
-            // CORREÇÃO: Data de aprovação (data atual quando o PDF é gerado)
-            document.add(new Paragraph(String.format("   Ordem de Compra Gerada: %s %s", 
-                java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))))
+            // CORREÇÃO: Data/hora FIXA de aprovação (com fallback para registros antigos)
+            String dataHoraAprovacao;
+            if (pedido.getDataHoraAprovacao() != null) {
+                // Usar data/hora fixa de aprovação (para novos registros)
+                dataHoraAprovacao = pedido.getDataHoraAprovacao().format(
+                    java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            } else if (pedido.getDataGeracao() != null) {
+                // Fallback: usar data de geração com hora atual (para registros antigos)
+                dataHoraAprovacao = pedido.getDataGeracao().format(
+                    java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " " +
+                    java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+            } else {
+                // Fallback final
+                dataHoraAprovacao = java.time.LocalDateTime.now().format(
+                    java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            }
+            document.add(new Paragraph(String.format("   Ordem de Compra Gerada: %s", dataHoraAprovacao))
                 .setFontSize(10));
             
             document.close();
@@ -277,6 +290,37 @@ public class PdfGenerationService {
             return new byte[0];
         }
         return byteArrayOutputStream.toByteArray();
+    }
+
+    /**
+     * Gera ZIP com múltiplos PDFs
+     */
+    public byte[] gerarZipComPdfs(Map<String, byte[]> pdfs) {
+        if (pdfs == null || pdfs.isEmpty()) {
+            return new byte[0];
+        }
+
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             ZipOutputStream zipOutputStream = new ZipOutputStream(byteArrayOutputStream)) {
+
+            for (Map.Entry<String, byte[]> entry : pdfs.entrySet()) {
+                String nomeArquivo = entry.getKey();
+                byte[] pdfBytes = entry.getValue();
+                
+                if (pdfBytes.length > 0) {
+                    ZipEntry zipEntry = new ZipEntry(nomeArquivo);
+                    zipOutputStream.putNextEntry(zipEntry);
+                    zipOutputStream.write(pdfBytes);
+                    zipOutputStream.closeEntry();
+                }
+            }
+            
+            zipOutputStream.finish();
+            return byteArrayOutputStream.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new byte[0];
+        }
     }
 }
 

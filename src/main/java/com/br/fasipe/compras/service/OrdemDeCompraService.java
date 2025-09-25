@@ -12,8 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +29,9 @@ public class OrdemDeCompraService {
 
     @Autowired
     private PdfGenerationService pdfGenerationService;
+
+    // Map para armazenar data/hora de aprovação por ID do orçamento
+    private static final Map<Long, LocalDateTime> datasHoraAprovacao = new ConcurrentHashMap<>();
 
     public List<OrcamentoDTO> buscarOrcamentosPendentes() {
         List<Orcamento> orcamentos = orcamentoRepository.findByStatusPendente();
@@ -52,10 +57,14 @@ public class OrdemDeCompraService {
              orcamentoRepository.reprovarConcorrentes(produtoIds, orcamentoIdsAprovados);
         }
         LocalDate agora = LocalDate.now();
+        LocalDateTime agoraComHora = LocalDateTime.now();
         for (Orcamento orcamento : orcamentosAprovados) {
             orcamento.setStatus("aprovado");
             orcamento.setDataGeracao(agora);
             orcamento.setUsuarioAprovador(usuarioPadrao);
+            
+            // FIXAR data/hora de aprovação no Map (momento exato da aprovação)
+            datasHoraAprovacao.put(orcamento.getIdOrcamento(), agoraComHora);
         }
         orcamentoRepository.saveAll(orcamentosAprovados);
     }
@@ -200,6 +209,10 @@ public class OrdemDeCompraService {
             pedido.setStatus(primeiro.getStatus());
             pedido.setDataGeracao(primeiro.getDataGeracao() != null ? primeiro.getDataGeracao() : primeiro.getDataEmissao());
             
+            // Data/hora de aprovação fixa (do Map de aprovações)
+            LocalDateTime dataHoraAprovacao = datasHoraAprovacao.get(primeiro.getIdOrcamento());
+            pedido.setDataHoraAprovacao(dataHoraAprovacao);
+            
             // Usuário aprovador
             if (primeiro.getUsuarioAprovador() != null) {
                 pedido.setNomeUsuarioAprovador(primeiro.getUsuarioAprovador().getLoginUsuario());
@@ -322,6 +335,36 @@ public class OrdemDeCompraService {
         }
         
         return pdfGenerationService.gerarPdfPedidoAgrupado(pedido, orcamentos);
+    }
+
+    /**
+     * Gera ZIP com PDFs de múltiplos pedidos agrupados
+     */
+    public byte[] gerarZipPedidosAgrupados(List<String> idsPedidos) {
+        if (idsPedidos == null || idsPedidos.isEmpty()) {
+            return new byte[0];
+        }
+
+        Map<String, byte[]> pdfs = new HashMap<>();
+        
+        for (String idPedido : idsPedidos) {
+            try {
+                byte[] pdfBytes = gerarPdfPedidoAgrupado(idPedido);
+                if (pdfBytes.length > 0) {
+                    pdfs.put("Pedido_" + idPedido + ".pdf", pdfBytes);
+                }
+            } catch (Exception e) {
+                // Pular pedidos com erro e continuar com os outros
+                System.err.println("Erro ao gerar PDF para pedido " + idPedido + ": " + e.getMessage());
+            }
+        }
+        
+        return pdfGenerationService.gerarZipComPdfs(pdfs);
+    }
+
+    // Método público para obter a data/hora de aprovação
+    public static LocalDateTime getDataHoraAprovacao(Long orcamentoId) {
+        return datasHoraAprovacao.get(orcamentoId);
     }
 }
 

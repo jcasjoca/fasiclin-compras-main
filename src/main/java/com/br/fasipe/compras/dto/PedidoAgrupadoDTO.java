@@ -1,6 +1,7 @@
 package com.br.fasipe.compras.dto;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class PedidoAgrupadoDTO {
@@ -14,6 +15,7 @@ public class PedidoAgrupadoDTO {
     private Double valorTotal;
     private String status;
     private LocalDate dataGeracao;
+    private LocalDateTime dataHoraAprovacao;
     private String nomeUsuarioAprovador;
     private Integer quantidadeProdutos;
     private List<String> nomesProdutos;
@@ -100,6 +102,14 @@ public class PedidoAgrupadoDTO {
 
     public void setDataGeracao(LocalDate dataGeracao) {
         this.dataGeracao = dataGeracao;
+    }
+
+    public LocalDateTime getDataHoraAprovacao() {
+        return dataHoraAprovacao;
+    }
+
+    public void setDataHoraAprovacao(LocalDateTime dataHoraAprovacao) {
+        this.dataHoraAprovacao = dataHoraAprovacao;
     }
 
     public String getNomeUsuarioAprovador() {
