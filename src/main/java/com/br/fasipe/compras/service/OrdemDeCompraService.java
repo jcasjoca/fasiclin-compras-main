@@ -76,7 +76,6 @@ public class OrdemDeCompraService {
         }
 
         Orcamento orcamento = orcamentoOpt.get();
-        String status = orcamento.getStatus() != null ? orcamento.getStatus().toLowerCase() : "";
 
         // CORREÇÃO: Permitir PDF para TODOS os status (pendente, aprovado, reprovado)
         // Agora todos os pedidos podem gerar PDF independente do status
