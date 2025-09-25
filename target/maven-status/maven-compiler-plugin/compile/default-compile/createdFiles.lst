@@ -1,7 +1,6 @@
 com\br\fasipe\compras\repository\FornecProdRepository.class
 com\br\fasipe\compras\repository\UsuarioRepository.class
 com\br\fasipe\compras\dto\OrcamentoDTO.class
-com\br\fasipe\compras\service\OrdemDeCompraService.class
 com\br\fasipe\compras\repository\FornecedorRepository.class
 com\br\fasipe\compras\controller\ControlePedidosController.class
 com\br\fasipe\compras\model\Produto.class

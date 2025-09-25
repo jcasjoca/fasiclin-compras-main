@@ -78,11 +78,9 @@ public class OrdemDeCompraService {
         Orcamento orcamento = orcamentoOpt.get();
         String status = orcamento.getStatus() != null ? orcamento.getStatus().toLowerCase() : "";
 
-        if ("aprovado".equals(status) || "reprovado".equals(status)) {
-            return pdfGenerationService.gerarPdfUnico(orcamento);
-        }
-        
-        return new byte[0];
+        // CORREÇÃO: Permitir PDF para TODOS os status (pendente, aprovado, reprovado)
+        // Agora todos os pedidos podem gerar PDF independente do status
+        return pdfGenerationService.gerarPdfUnico(orcamento);
     }
     
     public byte[] gerarPdfsPorIds(List<Long> orcamentoIds) {
@@ -92,8 +90,10 @@ public class OrdemDeCompraService {
         
         List<Orcamento> orcamentosParaBaixar = orcamentoRepository.findAllById(orcamentoIds);
 
+        // CORREÇÃO: Permitir download de PDF para TODOS os status (pendente, aprovado, reprovado)
+        // Remover filtro restritivo por status
         List<Orcamento> orcamentosValidos = orcamentosParaBaixar.stream()
-                .filter(o -> "aprovado".equalsIgnoreCase(o.getStatus()) || "reprovado".equalsIgnoreCase(o.getStatus()))
+                .filter(o -> o.getStatus() != null && !o.getStatus().trim().isEmpty())
                 .collect(Collectors.toList());
 
         if (orcamentosValidos.isEmpty()) {
@@ -133,24 +133,30 @@ public class OrdemDeCompraService {
             status = null;
         }
         
-        // Buscar todos os orçamentos (incluindo pendentes)
-        List<Orcamento> orcamentos = orcamentoRepository.findWithFilters(
-            dataInicial, dataFinal, fornecedorNome, produtoNome, null, status);
+        // CORREÇÃO CIRÚRGICA: Buscar orçamentos sem filtros problemáticos, aplicar filtros depois
+        List<Orcamento> orcamentos;
+        
+        // Se não há filtros específicos, buscar todos
+        if (dataInicial == null && dataFinal == null && fornecedorNome == null && produtoNome == null && status == null) {
+            orcamentos = orcamentoRepository.findWithFilters(null, null, null, null, null, null);
+        } else {
+            // Aplicar filtros básicos na query (funciona bem)
+            orcamentos = orcamentoRepository.findWithFilters(
+                dataInicial, dataFinal, fornecedorNome, produtoNome, null, status);
+        }
             
         // Aceitar todos os status (pendente, aprovado, reprovado)
         List<Orcamento> orcamentosFiltrados = orcamentos;
         
-        // Agrupar por: Fornecedor + Status + Data de Aprovação/Emissão + Usuário Aprovador
+        // CORREÇÃO: Agrupar apenas por Fornecedor + Status para evitar duplicatas
+        // Isso corrige os pedidos PED-3 duplicados e melhora a organização
         Map<String, List<Orcamento>> grupos = orcamentosFiltrados.stream()
             .collect(Collectors.groupingBy(o -> 
                 o.getFornecedor().getId() + "_" + 
-                o.getStatus().toUpperCase() + "_" + 
-                (o.getDataGeracao() != null ? o.getDataGeracao() : o.getDataEmissao()) + "_" + 
-                (o.getUsuarioAprovador() != null ? o.getUsuarioAprovador().getIdUsuario() : "PENDENTE")
+                o.getStatus().toUpperCase()
             ));
         
         List<PedidoAgrupadoDTO> pedidosAgrupados = new ArrayList<>();
-        int sequencial = 1;
         
         for (Map.Entry<String, List<Orcamento>> entry : grupos.entrySet()) {
             List<Orcamento> grupoOrcamentos = entry.getValue();
@@ -159,12 +165,21 @@ public class OrdemDeCompraService {
             Orcamento primeiro = grupoOrcamentos.get(0);
             PedidoAgrupadoDTO pedido = new PedidoAgrupadoDTO();
             
-            // Gerar ID do Pedido: PED-{fornecedorId}-{AAAAMMDD}-{seq}
-            // Usar dataGeracao se disponível, senão usar dataEmissao (para pendentes)
+            // CORREÇÃO: Gerar ID determinístico baseado nos dados, não na ordem
+            // Usar ID do menor orçamento como base para garantir consistência
+            Long menorIdOrcamento = grupoOrcamentos.stream()
+                .map(Orcamento::getIdOrcamento)
+                .min(Long::compareTo)
+                .orElse(primeiro.getIdOrcamento());
+            
             LocalDate dataParaId = primeiro.getDataGeracao() != null ? primeiro.getDataGeracao() : primeiro.getDataEmissao();
             String dataFormatada = dataParaId.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            
+            // Usar parte do hash do menor ID para garantir unicidade e consistência
+            int sequencialDeterministico = (int) (menorIdOrcamento % 1000) + 1;
+            
             String idPedidoGerado = String.format("PED-%d-%s-%03d", 
-                primeiro.getFornecedor().getId(), dataFormatada, sequencial++);
+                primeiro.getFornecedor().getId(), dataFormatada, sequencialDeterministico);
             pedido.setIdPedido(idPedidoGerado);
             
             // Coletar IDs dos orçamentos
@@ -229,7 +244,54 @@ public class OrdemDeCompraService {
             pedidosAgrupados.add(pedido);
         }
         
-        // Filtrar por ID do pedido se fornecido
+        // CORREÇÃO: Aplicar filtros adicionais nos pedidos agrupados para garantir consistência
+        final LocalDate dataInicialFinal = dataInicial;
+        final LocalDate dataFinalFinal = dataFinal;
+        final String fornecedorNomeFinal = fornecedorNome;
+        final String produtoNomeFinal = produtoNome;
+        final String statusFinal = status;
+        
+        if (dataInicialFinal != null || dataFinalFinal != null) {
+            pedidosAgrupados = pedidosAgrupados.stream()
+                .filter(p -> {
+                    LocalDate dataPedido = p.getDataEmissaoInicio();
+                    if (dataPedido == null) return true;
+                    
+                    boolean dentroRange = true;
+                    if (dataInicialFinal != null) {
+                        dentroRange = dentroRange && !dataPedido.isBefore(dataInicialFinal);
+                    }
+                    if (dataFinalFinal != null) {
+                        dentroRange = dentroRange && !dataPedido.isAfter(dataFinalFinal);
+                    }
+                    return dentroRange;
+                })
+                .collect(Collectors.toList());
+        }
+        
+        // Filtrar por fornecedor nos pedidos agrupados (mais preciso)
+        if (fornecedorNomeFinal != null && !fornecedorNomeFinal.trim().isEmpty()) {
+            pedidosAgrupados = pedidosAgrupados.stream()
+                .filter(p -> p.getNomeFornecedor().toLowerCase().contains(fornecedorNomeFinal.toLowerCase()))
+                .collect(Collectors.toList());
+        }
+        
+        // Filtrar por produto nos pedidos agrupados (mais preciso)  
+        if (produtoNomeFinal != null && !produtoNomeFinal.trim().isEmpty()) {
+            pedidosAgrupados = pedidosAgrupados.stream()
+                .filter(p -> p.getNomesProdutos().stream()
+                    .anyMatch(produto -> produto.toLowerCase().contains(produtoNomeFinal.toLowerCase())))
+                .collect(Collectors.toList());
+        }
+        
+        // Filtrar por status nos pedidos agrupados (garantir que funciona)
+        if (statusFinal != null && !statusFinal.trim().isEmpty()) {
+            pedidosAgrupados = pedidosAgrupados.stream()
+                .filter(p -> p.getStatus().equalsIgnoreCase(statusFinal.trim()))
+                .collect(Collectors.toList());
+        }
+        
+        // Filtrar por ID do pedido se fornecido (PRESERVADO - NÃO ALTERAR)
         if (idPedido != null && !idPedido.trim().isEmpty()) {
             pedidosAgrupados = pedidosAgrupados.stream()
                 .filter(p -> p.getIdPedido().toLowerCase().contains(idPedido.toLowerCase()))

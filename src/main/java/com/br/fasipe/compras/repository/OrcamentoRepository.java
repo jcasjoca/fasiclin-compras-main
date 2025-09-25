@@ -23,14 +23,14 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     @Query("UPDATE Orcamento o SET o.status = 'REPROVADO' WHERE o.produto.id IN :produtoIds AND o.idOrcamento NOT IN :orcamentoIdsAprovados AND o.status = 'Pendente'")
     void reprovarConcorrentes(@Param("produtoIds") Set<Integer> produtoIds, @Param("orcamentoIdsAprovados") List<Long> orcamentoIdsAprovados);
 
-    // CORREÇÃO: Usar sempre dataEmissao para filtros de data (data da cotação)
+    // CORREÇÃO: Reverter para query original + melhorar apenas status
     @Query("SELECT o from Orcamento o WHERE " +
            "(:dataInicial IS NULL OR o.dataEmissao >= :dataInicial) AND " +
            "(:dataFinal IS NULL OR o.dataEmissao <= :dataFinal) AND " +
            "(:fornecedorNome IS NULL OR LOWER(o.fornecedor.descricao) LIKE LOWER(CONCAT('%', :fornecedorNome, '%'))) AND " +
            "(:produtoNome IS NULL OR LOWER(o.produto.nome) LIKE LOWER(CONCAT('%', :produtoNome, '%'))) AND " +
            "(:idOrcamento IS NULL OR o.idOrcamento = :idOrcamento) AND " +
-           "(:status IS NULL OR UPPER(o.status) = UPPER(:status))")
+           "(:status IS NULL OR LOWER(TRIM(o.status)) = LOWER(TRIM(:status)))")
     List<Orcamento> findWithFilters(
             @Param("dataInicial") LocalDate dataInicial, 
             @Param("dataFinal") LocalDate dataFinal, 

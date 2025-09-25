@@ -28,12 +28,45 @@ public class PdfGenerationService {
             Document document = new Document(pdf);
             
             // Adiciona conteúdo ao PDF
-            document.add(new Paragraph("Ordem de Compra - ID: " + orcamento.getIdOrcamento()));
-            document.add(new Paragraph("Status: " + orcamento.getStatus().toUpperCase()));
+            String statusOrcamento = orcamento.getStatus() != null ? orcamento.getStatus().toUpperCase() : "PENDENTE";
+            document.add(new Paragraph("═══════════════════════════════════════════════════════════"));
+            document.add(new Paragraph("              ORDEM DE COMPRA - ORÇAMENTO"));
+            document.add(new Paragraph("═══════════════════════════════════════════════════════════"));
+            document.add(new Paragraph(" "));
+            document.add(new Paragraph("ID do Orçamento: " + orcamento.getIdOrcamento()));
+            document.add(new Paragraph("Status: " + statusOrcamento));
+            document.add(new Paragraph("Data de Emissão: " + (orcamento.getDataEmissao() != null ? 
+                orcamento.getDataEmissao().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "N/A")));
+            document.add(new Paragraph(" "));
             document.add(new Paragraph("Fornecedor: " + orcamento.getFornecedor().getDescricao()));
             document.add(new Paragraph("Produto: " + orcamento.getProduto().getNome()));
-            document.add(new Paragraph("Quantidade: " + orcamento.getQuantidade()));
-            document.add(new Paragraph("Valor Unitário: R$ " + orcamento.getPrecoCompra()));
+            if (orcamento.getProduto().getDescricao() != null) {
+                document.add(new Paragraph("Descrição: " + orcamento.getProduto().getDescricao()));
+            }
+            document.add(new Paragraph("Quantidade: " + orcamento.getQuantidade() + " " + 
+                (orcamento.getUnidadeMedida() != null ? orcamento.getUnidadeMedida().getUnidadeAbreviacao() : "")));
+            document.add(new Paragraph("Valor Unitário: R$ " + String.format("%.2f", orcamento.getPrecoCompra().doubleValue())));
+            document.add(new Paragraph("Valor Total: R$ " + String.format("%.2f", 
+                orcamento.getPrecoCompra().doubleValue() * orcamento.getQuantidade())));
+            
+            if (orcamento.getDataEntrega() != null) {
+                document.add(new Paragraph("Data de Entrega: " + 
+                    orcamento.getDataEntrega().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+            }
+            
+            if (orcamento.getCondicoesPagamento() != null && !orcamento.getCondicoesPagamento().trim().isEmpty()) {
+                document.add(new Paragraph("Condições de Pagamento: " + orcamento.getCondicoesPagamento()));
+            }
+            
+            if (orcamento.getGarantia() != null && !orcamento.getGarantia().trim().isEmpty()) {
+                document.add(new Paragraph("Garantia: " + orcamento.getGarantia()));
+            }
+            
+            document.add(new Paragraph(" "));
+            document.add(new Paragraph("═══════════════════════════════════════════════════════════"));
+            document.add(new Paragraph("        Documento gerado em: " + 
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
+            document.add(new Paragraph("═══════════════════════════════════════════════════════════"));
             
             // Fecha o documento para finalizar a criação do PDF
             document.close();
@@ -94,12 +127,13 @@ public class PdfGenerationService {
             // Configurar margens
             document.setMargins(40, 40, 40, 40);
             
-            // Título do cabeçalho
+            // Título do cabeçalho - CORREÇÃO: Mostrar status dinâmico
+            String statusPedido = pedido.getStatus() != null ? pedido.getStatus().toUpperCase() : "PENDENTE";
             document.add(new Paragraph("┌─────────────────────────────────────────────────────────────────────────────────┐")
                 .setFontSize(10));
             document.add(new Paragraph("│                                                                                 │")
                 .setFontSize(10));
-            document.add(new Paragraph(String.format("│  PEDIDO APROVADO Nº: %-50s │", pedido.getIdPedido()))
+            document.add(new Paragraph(String.format("│  PEDIDO %s Nº: %-45s │", statusPedido, pedido.getIdPedido()))
                 .setFontSize(10));
             document.add(new Paragraph("│                                                                                 │")
                 .setFontSize(10));
