@@ -110,10 +110,4 @@ Antes de começar, você vai precisar ter instalado em sua máquina:
 
 ---
 
-## ✨ Contribuidores
 
-Agradecemos a todos que contribuíram para este projeto!
-
-<a href="https://github.com/matheusassuncaoo/fasiclin-estoque/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=matheusassuncaoo/fasiclin-estoque" alt="Contribuidores" title="Contribuidores do Fasiclin Estoque"/>
-</a>
